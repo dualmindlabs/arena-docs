@@ -1,0 +1,326 @@
+---
+title: "Thread Management"
+description: "How DualMind Lab manages persistent conversations — thread creation, visibility controls, public sharing, and message history."
+keywords: ["threads", "conversations", "visibility", "sharing", "persistence", "public", "private"]
+---
+
+## What is a Thread?
+
+A thread is a persistent conversation container. Each thread has:
+- **Title**: Human-readable name
+- **Owner**: User who created it (`user_id`)
+- **Visibility**: Access control (`private`, `public`, `unlisted`)
+- **Messages**: Chat history with AI responses
+
+**Why threads exist:** Conversations gain value over time. Threads enable continuing discussions across sessions, organizing topics, and sharing comparisons.
+
+## Visibility Modes
+
+Threads use three visibility levels controlling who can access them:
+
+### Private
+
+**Default visibility.** Only the owner can access private threads.
+
+**Access Rules**:
+- Anonymous users: ❌ 401 Unauthorized
+- Authenticated non-owner: ❌ 403 Forbidden
+- Owner: ✅ Full access
+
+**Use Cases**:
+- Personal conversations
+- Sensitive prompts
+- Work-in-progress comparisons
+- Default safe choice
+
+<Info>
+Private threads never appear in public listings and require both authentication AND ownership verification.
+</Info>
+
+### Public
+
+Anyone can access public threads (authenticated or anonymous).
+
+**Access Rules**:
+- Anonymous users: ✅ Read-only access
+- Authenticated users: ✅ Read-only access
+- Owner: ✅ Full access (read, update, delete)
+
+**Use Cases**:
+- Sharing interesting comparisons
+- Public model benchmarks
+- Tutorial examples
+- Community-contributed prompts
+
+<Warning>
+Public threads are discoverable. Consider privacy implications before changing visibility from private to public.
+</Warning>
+
+### Unlisted
+
+Accessible via direct link but not listed publicly.
+
+**Access Rules**:
+- Anyone with link: ✅ Read-only access
+- Owner: ✅ Full access
+
+**Use Cases**:
+- Sharing with specific people
+- Semi-private comparisons
+- Preview links before public release
+- Controlled distribution
+
+**Difference from public**: Unlisted threads don't appear in public thread listings (if such feature exists).
+
+## Visibility Comparison
+
+| Aspect | Private | Public | Unlisted |
+|--------|---------|--------|----------|
+| Requires auth | Yes | No | No |
+| Ownership required | Yes | No (read-only) | No (read-only) |
+| Publicly listed | No | Yes | No |
+| Shareable | No | Yes | Yes (with link) |
+| Default | ✅ Yes | No | No |
+
+## Thread Lifecycle
+
+<Steps>
+  <Step title="Creation">
+    User creates thread with optional title. Default visibility: `private`.
+    
+    System assigns:
+    - UUID as `thread_id`
+    - Authenticated user as owner (`user_id`)
+    - Current timestamp as `created_at`
+  </Step>
+  
+  <Step title="Messages Added">
+    User makes chat requests with `threadId` parameter.
+    
+    Each request writes message to `thread_messages` table:
+    - Prompt text
+    - Model responses (single or dual)
+    - Comparison ID (if dual-chat)
+    - Timing metrics
+  </Step>
+  
+  <Step title="Updates">
+    Owner can modify:
+    - Title (rename conversation)
+    - Visibility (change access control)
+    
+    Cannot modify: `thread_id`, `user_id`, `created_at`
+  </Step>
+  
+  <Step title="Sharing">
+    Owner retrieves share URL (if visibility != `private`).
+    
+    Share endpoint returns:
+    - Current visibility
+    - Share URL (if sharable)
+    - `canShare` boolean
+  </Step>
+  
+  <Step title="Deletion">
+    Owner deletes thread.
+    
+    **Cascade behavior**: All messages in `thread_messages` table automatically deleted via foreign key cascade.
+  </Step>
+</Steps>
+
+## Why Visibility Matters
+
+### Privacy by Default
+
+New threads default to `private` for safety. Users must explicitly choose to share.
+
+**Reasoning**: Better to keep something private accidentally than expose sensitive prompts publicly.
+
+### Flexible Sharing
+
+Three levels accommodate different sharing needs:
+- Don't share: `private`
+- Share with anyone: `public`
+- Share selectively: `unlisted`
+
+### Access Control Without Complexity
+
+Simple model: owner has full control, others have read-only (for public/unlisted).
+
+**No complex permissions**: No "viewer", "editor", "commenter" roles. Just owner vs everyone else.
+
+## Message Structure
+
+Thread messages contain:
+
+```json
+{
+  "messageId": "uuid",
+  "threadId": "uuid",
+  "promptText": "User's question",
+  "model1Name": "llama-3.3-70b-versatile",
+  "model1Response": "AI response text",
+  "model1TimeMs": 1234,
+  "model2Name": null,          // null if single-chat
+  "model2Response": null,
+  "model2TimeMs": null,
+  "comparisonId": null,        // UUID if dual-chat
+  "voteChoice": null,          // User's vote if submitted
+  "createdAt": "2024-01-15T..."
+}
+```
+
+**Single-chat messages**: `model1*` fields populated, `model2*` fields null
+
+**Dual-chat messages**: Both `model1*` and `model2*` populated, `comparisonId` present
+
+## Threading Model
+
+### Linear History
+
+Messages in a thread form a **linear timeline**, not a tree structure.
+
+**No branching**: Can't fork conversations or have multiple branches.
+
+**Why linear?**
+- Simpler implementation
+- Matches chat interface mental model
+- Avoids UI complexity of thread trees
+
+### Message Ordering
+
+Messages ordered by `created_at` timestamp (ascending).
+
+Retrieval: Index on `(thread_id, created_at)` ensures efficient chronological queries.
+
+## Cascade Deletion
+
+Deleting a thread triggers **cascade deletion** of related data:
+
+```
+DELETE threads WHERE thread_id = X
+  ↓ (CASCADE)
+DELETE thread_messages WHERE thread_id = X
+```
+
+**Why cascade?**
+- Data consistency: No orphan messages
+- Cleanup simplicity: One DELETE statement
+- Performance: Database handles cleanup atomically
+
+<Warning>
+Cascade deletion is permanent. No "trash" or recovery mechanism exists.
+</Warning>
+
+## Thread Title Behavior
+
+### Default Title
+
+If no title provided during creation:
+```
+Default: "New Thread"
+```
+
+### Title Updates
+
+Owner can rename thread anytime:
+- No uniqueness constraint (multiple threads can have same title)
+- No length validation (but UI should enforce reasonable limits)
+- Empty titles allowed (defaults to "Untitled")
+
+**Why no forced uniqueness?** Users may want multiple threads with same topic name.
+
+## Ownership Transfer
+
+**Not supported.** Thread ownership is permanent.
+
+**Workaround**: Create new thread and copy messages (manual process).
+
+**Why no transfer?**
+- Simpler permission model
+- Avoids authorization complexity
+- Unclear use case for typical usage
+
+## Performance Considerations
+
+### Listing Threads
+
+Query: `SELECT * FROM threads WHERE user_id = X ORDER BY created_at DESC`
+
+**Optimization**: Index on `(user_id, created_at)` enables fast retrieval.
+
+**Pagination**: API supports `page` and `limit` parameters to avoid loading all threads.
+
+### Message Retrieval
+
+Query: `SELECT * FROM thread_messages WHERE thread_id = X ORDER BY created_at ASC`
+
+**Optimization**: Index on `(thread_id, created_at)`.
+
+**Potential issue**: Very long threads (1000+ messages) may load slowly.
+
+**Mitigation**: Consider pagination for message retrieval (not currently implemented).
+
+## Sharing Workflow
+
+<Steps>
+  <Step title="User Creates Thread">
+    Thread starts as `private` by default.
+  </Step>
+  
+  <Step title="User Adds Content">
+    Makes chat requests with `threadId`, building conversation history.
+  </Step>
+  
+  <Step title="User Decides to Share">
+    Calls `PUT /api/threads/{id}` to change visibility to `public` or `unlisted`.
+  </Step>
+  
+  <Step title="User Gets Share URL">
+    Calls `GET /api/threads/{id}/share` to retrieve shareable URL.
+  </Step>
+  
+  <Step title="Recipients Access">
+    Anyone with URL can view thread (if `public` or `unlisted`).
+  </Step>
+</Steps>
+
+<Info>
+Share endpoint validates visibility before returning URL. Private threads return `canShare: false`.
+</Info>
+
+## Security Implications
+
+### Private Thread Leakage
+
+If thread ID is guessable, attackers could try accessing private threads.
+
+**Mitigation**: UUIDs are cryptographically random (2^122 possible values), making guessing infeasible.
+
+### Public Thread Content
+
+Once marked `public`, thread is accessible to anyone forever (unless visibility changed back).
+
+**Consideration**: Users should review content before making public.
+
+### Unlisted Discovery
+
+Unlisted threads are "security through obscurity". Anyone with URL can access.
+
+**Not secure for**: Truly sensitive data (use `private` instead)
+
+**Acceptable for**: Sharing with trusted individuals
+
+## Next Steps
+
+<CardGroup cols="2">
+  <Card title="Chat Modes" icon="comments" href="/concepts/chat-modes">
+    Single vs dual chat explained
+  </Card>
+  <Card title="Voting System" icon="thumbs-up" href="/concepts/voting">
+    How votes work
+  </Card>
+  <Card title="System Overview" icon="cube" href="/concepts/overview">
+    Architecture decisions
+  </Card>
+</CardGroup>

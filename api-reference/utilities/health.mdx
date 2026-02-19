@@ -1,0 +1,101 @@
+---
+title: "GET /health"
+api: "GET /health"
+description: "API health check endpoint"
+---
+
+## Authentication
+
+**Not Required**: `[AllowAnonymous]` (Line 13)
+
+## Response
+
+<ResponseField name="status" type="string">
+  Always `"healthy"` (Line 18)
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Always `"DualMind API is running"` (Line 19)
+</ResponseField>
+
+<ResponseField name="timestamp" type="string">
+  ISO8601 UTC timestamp at response generation (Line 20)
+</ResponseField>
+
+<ResponseField name="version" type="string">
+  API version (hardcoded `"1.0.0"`, Line 21)
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET 'http://localhost:5079/health'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5079/health');
+const health = await response.json();
+```
+
+```python Python
+import requests
+response = requests.get('http://localhost:5079/health')
+health = response.json()
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 Success
+{
+  "status": "healthy",
+  "message": "DualMind API is running",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "version": "1.0.0"
+}
+```
+</ResponseExample>
+
+## Side Effects
+
+**No Database Operations**: Static response
+
+**No Validation**: Always returns 200 OK
+
+## Behavioral Guarantees
+
+**Always Succeeds**: Cannot fail (no database/external dependencies)
+
+**Response Time**: Sub-millisecond (no I/O operations)
+
+**Idempotency**: YES (identical response every time, except timestamp)
+
+## Aliases
+
+**Identical Endpoint**: `GET /api/health` (Lines 26-38)
+- Same response format
+- Same authentication requirements
+- Frontend compatibility alias (Line 25 comment)
+
+## Use Cases
+
+**Health Monitoring**:
+- Load balancer health checks
+- Kubernetes liveness/readiness probes
+- Uptime monitoring services
+
+**API Discovery**:
+- Verify API is reachable
+- Check API version
+
+## Error Conditions
+
+**None**: Endpoint cannot fail
+
+**No Exceptions**: No try-catch block (Lines 14-23)
+
+## Performance
+
+**Cache-Safe**: Response can be cached briefly (timestamp changes)
+
+**Load**: Negligible CPU/memory impact
+
+**Concurrent Requests**: Fully thread-safe

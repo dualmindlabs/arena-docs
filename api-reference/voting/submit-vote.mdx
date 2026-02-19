@@ -1,0 +1,323 @@
+---
+title: "POST /api/arena/model-vote"
+api: "POST /api/arena/model-vote"
+description: "Submit a vote for model comparison"
+---
+
+## Authentication
+
+**Required**: JWT Bearer token
+
+**JWT Claims Extraction** (Lines 51-55):
+```csharp
+sub | ClaimTypes.NameIdentifier → User UUID (optional, fallback if userId not in body)
+```
+
+## Request Body
+
+<ParamField body="comparisonId" type="string" required>
+  Comparison UUID from dual-chat response
+
+  **Validation** (Lines 26-34):
+  ```csharp
+  if (request == null || request.ComparisonId == Guid.Empty) {
+      return BadRequest("ComparisonId is required");
+  }
+  ```
+  
+  **Constraints**:
+  - MUST NOT be empty GUID (`00000000-0000-0000-0000-000000000000`)
+  - MUST be valid GUID format
+  - Links to `comparisons` table record
+</ParamField>
+
+<ParamField body="voteChoice" type="string" required>
+  Vote selection
+
+  **Validation** (Lines 36-44):
+  ```csharp
+  if (string.IsNullOrWhiteSpace(request.VoteChoice)) {
+      return BadRequest("VoteChoice is required (left, right, tie, both-bad)");
+  }
+  ```
+  
+  **Allowed Values** (Line 107):
+  - `"left"`: Vote for left/agent1 model
+  - `"right"`: Vote for right/agent2 model
+  - `"tie"`: Both models equally good
+  - `"both-bad"`: Both models equally bad
+  
+  **Case Handling**: Automatically lowercased (Line 61)
+  
+  **Invalid Values**: Not validated by controller (service validation behavior not enforced by server contract)
+</ParamField>
+
+<ParamField body="userId" type="string">
+  User UUID (optional)
+
+  **Fallback Logic** (Lines 48-56):
+  ```csharp
+  Guid? userId = request.UserId;
+  if (!userId.HasValue) {
+      // Extract from JWT claims
+      userId = parsedId from JWT;
+  }
+  ```
+  
+  **Priority**:
+  1. Use `userId` from request body if provided
+  2. Fall back to JWT `sub` claim if not provided
+  
+  **Behavior**: Optional in body, automatically extracted from auth token
+</ParamField>
+
+<ParamField body="winnerModelName" type="string" deprecated>
+  **DEPRECATED** (Line 111)
+
+  Kept for backwards compatibility, not used
+
+  **Replacement**: Use `voteChoice` instead
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST 'http://localhost:5079/api/arena/model-vote' \
+  -H 'Authorization: Bearer YOUR_JWT_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "comparisonId": "c7d3a4b2-9e1f-4c5d-8b3a-7f6e9d2c1a0b",
+    "voteChoice": "left"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5079/api/arena/model-vote', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${jwt}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    comparisonId: 'c7d3a4b2-9e1f-4c5d-8b3a-7f6e9d2c1a0b',
+    voteChoice: 'left'
+  })
+});
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'http://localhost:5079/api/arena/model-vote',
+    headers={
+        'Authorization': f'Bearer {jwt}',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'comparisonId': 'c7d3a4b2-9e1f-4c5d-8b3a-7f6e9d2c1a0b',
+        'voteChoice': 'left'
+    }
+)
+
+result = response.json()
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 Success
+{
+  "success": true,
+  "message": "Vote recorded successfully"
+}
+```
+
+```json 400 INVALID_REQUEST (Missing ComparisonId)
+{
+  "success": false,
+  "error": "ComparisonId is required",
+  "code": "INVALID_REQUEST"
+}
+```
+
+```json 400 INVALID_REQUEST (Missing VoteChoice)
+{
+  "success": false,
+  "error": "VoteChoice is required (left, right, tie, both-bad)",
+  "code": "INVALID_REQUEST"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Unauthorized"
+}
+```
+
+```json 500 VOTE_ERROR
+{
+  "success": false,
+  "error": "Comparison not found",
+  "code": "VOTE_ERROR"
+}
+```
+</ResponseExample>
+
+## Side Effects
+
+**Database Mutations** (Lines 59-63):
+```csharp
+await _modelStatsService.RecordVoteByChoiceAsync(
+    request.ComparisonId, 
+    request.VoteChoice.ToLower(), 
+    userId
+);
+```
+
+**Tables Written**:
+1. **model_votes** table (INSERT):
+   - `comparison_id` → request.ComparisonId
+   - `vote_choice` → request.VoteChoice (lowercased)
+   - `user_id` → userId (from body or JWT)
+   - `created_at` → NOW()
+
+2. **Potential CASCADE UPDATES** (service-level, not in controller):
+   - `ai_models` table: Win/loss count updates not enforced by server contract
+   - `comparisons` table: Winner field update not enforced by server contract
+
+## Authorization
+
+**Authentication**: Required (JWT Bearer)
+
+**Ownership**: No ownership check
+- Any authenticated user can vote on any comparison
+- No verification that user created the comparison
+
+**Vote Uniqueness**: Not enforced by controller
+- Multiple votes on same comparison allowed
+- Deduplication logic (if any) in service layer
+
+## Permissions
+
+**Who Can Vote**:
+- Any authenticated user
+- User who created comparison
+- Users who didn't create comparison
+
+**Who Cannot Vote**:
+- Unauthenticated users
+
+**Restrictions**: None documented in controller
+
+## Edge Cases
+
+1. **Empty GUID comparison_id**: 400 error (Lines 26-34)
+2. **Null voteChoice**: 400 error (Lines 36-44)
+3. **Empty voteChoice**: 400 error (Lines 36-44)
+4. **Whitespace-only voteChoice**: 400 error (Lines 36-44)
+5. **Invalid voteChoice** (not in enum): Behavior not enforced by server contract (service validation assumed)
+6. **Comparison doesn't exist**: Service exception → 500 error
+7. **Multiple votes on same comparison**: Allowed (no uniqueness check in controller)
+8. **Vote on own comparison**: Allowed
+9. **userId in body but different from JWT**: Body value used (Lines 48-49)
+10. **No userId in body, no JWT claim**: userId = null, passed to service
+
+## Error Conditions
+
+| Code | HTTP | Cause | Controller Line |
+|------|------|-------|----------------|
+| N/A | 401 | JWT missing or invalid | Middleware |
+| `INVALID_REQUEST` | 400 | ComparisonId null or empty GUID | 26-34 |
+| `INVALID_REQUEST` | 400 | VoteChoice null/empty/whitespace | 36-44 |
+| `VOTE_ERROR` | 500 | Service exception | 71-79 |
+
+**Exception Handling** (Lines 71-79):
+```csharp
+catch (Exception ex) {
+    return StatusCode(500, new { error = ex.Message, code = "VOTE_ERROR" });
+}
+```
+- All service exceptions return 500
+- Exception message exposed to client
+
+**Possible Service Exceptions**:
+- "Comparison not found"
+- "Invalid vote choice"
+- "Database constraint violation"
+
+## Vote Choice Semantics
+
+### `"left"` (Lines 59-63)
+- Votes for model in `agent1` position
+- Win count increment behavior not enforced by server contract
+
+### `"right"`
+- Votes for model in `agent2` position
+- Win count increment behavior not enforced by server contract
+
+### `"tie"`
+- Both models equally good
+- Tie count increment behavior not enforced by server contract
+
+### `"both-bad"`
+- Both models equally bad
+- Loss count increment behavior not enforced by server contract
+
+## Behavioral Guarantees
+
+**Atomicity**: Database transaction not enforced by controller (service-dependent)
+
+**Idempotency**: NOT idempotent
+- Each call creates new vote record
+- No deduplication
+
+**Vote Timing**: No expiration check
+- Can vote on old comparisons
+- No time limit enforced
+
+## Comparison Validation
+
+**Existence Check**: Not in controller code
+- Assumed to be in service layer
+- If comparison doesn't exist, service throws exception → 500
+
+**Ownership**: Not checked
+- Any user can vote on any comparison
+
+## Vote Storage
+
+**Winner Model Resolution** (Line 59):
+```csharp
+RecordVoteByChoiceAsync(comparisonId, voteChoice, userId)
+```
+
+**Service Responsibility**:
+- Lookup comparison by comparisonId
+- Resolve `voteChoice` ("left"/"right") to actual model name
+- Store vote with model reference
+
+**Controller Does NOT**:
+- Validate comparison exists
+- Resolve model names
+- Check duplicate votes
+
+## Authentication Fallback
+
+**Priority Order** (Lines 48-56):
+1. `request.UserId` (if provided and valid GUID)
+2. JWT `sub` claim
+3. JWT `ClaimTypes.NameIdentifier` claim
+4. `null` (if none available)
+
+**Note**: Passing `null` userId to service may cause service-level error (not documented)
+
+## Validation Order
+
+1. Request body null check
+2. ComparisonId validation (400 if invalid)
+3. VoteChoice validation (400 if invalid)
+4. UserId extraction (body or JWT)
+5. Service call (500 if fails)
+
+**Case Normalization**: VoteChoice lowercased before service call (Line 61)

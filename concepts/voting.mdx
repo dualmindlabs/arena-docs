@@ -1,0 +1,291 @@
+---
+title: "Voting System"
+description: "How DualMind Lab's voting system creates crowd-sourced model rankings — vote choices, win rate calculation, and ELO ratings."
+keywords: ["voting", "leaderboard", "ELO", "model ranking", "statistics", "win rate", "crowd-sourced"]
+---
+
+## Why voting exists
+
+Voting enables **crowd-sourced quality assessment**. Instead of assuming which model is better, let users decide based on actual responses.
+
+**Core Idea**: Same prompt → Two models → User votes on winner → <Tooltip tip="Elo rating system adapted from chess — models gain/lose points based on pairwise comparison outcomes">ELO ratings</Tooltip> update
+
+## Vote Choices
+
+Users vote on comparison outcomes with four options:
+
+### Left (Model 1 Wins)
+
+User prefers Model 1's response over Model 2.
+
+**Database effect**: Insert vote row with `winner_model_id = model1_id`
+
+### Right (Model 2 Wins)
+
+User prefers Model 2's response over Model 1.
+
+**Database effect**: Insert vote row with `winner_model_id = model2_id`
+
+### Tie (Both Good)
+
+Both models provided quality responses of equal value.
+
+**Database effect**: Insert **two vote rows**:
+- One with `winner_model_id = model1_id`
+- One with `winner_model_id = model2_id`
+
+**Reasoning**: Both models deserve credit for quality response.
+
+### Both Bad
+
+Neither model provided acceptable response.
+
+**Database effect**: Insert **one vote row** with `winner_model_id = NULL`
+
+**Effect on statistics**: Comparison counts toward both models' appearance totals but neither gets a win.
+
+<Info>
+"Tie" awards both models a win. "Both-bad" awards neither a win. These are distinct outcomes with different statistical impacts.
+</Info>
+
+## Vote Choice Comparison
+
+| Choice | Winner | Database Rows | Effect on Winner | Effect on Loser |
+|--------|--------|---------------|------------------|-----------------|
+| Left | Model 1 | 1 | +1 win | +0 wins |
+| Right | Model 2 | 1 | +1 win | +0 wins |
+| Tie | Both | 2 | +1 win each | N/A |
+| Both-bad | Neither | 1 | +0 wins each | +0 wins |
+
+## Vote Statistics
+
+Votes aggregate into model performance metrics:
+
+### Win Count
+
+Total number of votes where model was winner.
+
+**Calculation**:
+```sql
+SELECT COUNT(*) 
+FROM model_votes 
+WHERE winner_model_id = X
+```
+
+**Includes**: "Left" votes, "Right" votes, and "Tie" votes (counted for both models)
+
+### Appearance Count
+
+Total number of comparisons model participated in.
+
+**Calculation**:
+```sql
+SELECT COUNT(*) 
+FROM comparisons 
+WHERE model1_id = X OR model2_id = X
+```
+
+**Why separate table?** Comparisons exist even before votes are submitted.
+
+### Win Rate
+
+Percentage of appearances where model won.
+
+**Calculation**:
+```
+win_rate = (win_count / appearance_count) × 100
+```
+
+**Example**: 40 wins out of 100 appearances = 40% win rate
+
+<Warning>
+Win rate is meaningful only with sufficient sample size. Model with 1 win out of 1 comparison has 100% win rate but lacks statistical significance.
+</Warning>
+
+## Voting Workflow
+
+<Steps>
+  <Step title="User Requests Dual-Chat">
+    System returns comparison with `comparisonId` in response.
+  </Step>
+  
+  <Step title="User Reviews Responses">
+    Reads both AI responses (ideally without seeing model names for unbiased judgment).
+  </Step>
+  
+  <Step title="User Submits Vote">
+    Calls vote endpoint with `comparisonId` and `voteChoice` (`left`, `right`, `tie`, `both-bad`).
+  </Step>
+  
+  <Step title="Vote Recorded">
+    System inserts 1-2 rows in `model_votes` table depending on choice.
+  </Step>
+  
+  <Step title="Statistics Update">
+    Win counts and win rates recalculated (queries run on-demand, not cached).
+  </Step>
+</Steps>
+
+## Vote Immutability
+
+Votes are **immutable** once submitted.
+
+**No UPDATE operations allowed.** Vote changes require:
+1. DELETE existing vote(s)
+2. INSERT new vote(s)
+
+**Why immutable?**
+- Simpler audit trail
+- Prevents accidental vote manipulation
+- Explicit about vote changes (not silent updates)
+
+<Note>
+Current implementation allows duplicate votes on same comparison. Vote "changes" are implemented as additional rows, not replacements.
+</Note>
+
+## Vote Persistence
+
+Votes link to comparisons, not thread messages:
+
+```
+comparison (UUID) → model_votes (1-2 rows)
+```
+
+**Implication**: Votes persist even if thread message deleted (comparison record remains).
+
+**Why separate?** Comparisons are first-class entities independent of threads. Non-thread comparisons (if implemented) could still collect votes.
+
+## Statistical Guarantees
+
+### Eventually Consistent
+
+Win rates reflect all votes in database at query time. No caching lag.
+
+**Benefit**: Real-time leaderboard updates
+
+**Tradeoff**: Expensive queries for large vote datasets (requires aggregation)
+
+### No Vote Deduplication
+
+System allows multiple votes on same comparison by same user.
+
+**Intentional design choice**: Enables vote revisions without complex state tracking.
+
+**Implication**: Clients should prevent duplicate submissions if desired (UI-level enforcement).
+
+## Leaderboard Construction
+
+Model leaderboard ranks models by win rate:
+
+```sql
+SELECT 
+  model_id,
+  model_name,
+  COUNT(winner_model_id) as wins,
+  (SELECT COUNT(*) FROM comparisons 
+   WHERE model1_id = model_id OR model2_id = model_id) as appearances,
+  (COUNT(winner_model_id) * 100.0 / appearances) as win_rate
+FROM ai_models
+LEFT JOIN model_votes ON winner_model_id = model_id
+GROUP BY model_id
+ORDER BY win_rate DESC
+```
+
+**Ranking criteria**:
+1. Win rate (primary)
+2. Appearance count (tiebreaker for models with equal win rate)
+
+<Info>
+Models with zero appearances have undefined win rate and should be excluded from rankings.
+</Info>
+
+## Blind vs Revealed Voting
+
+DualMind API doesn't enforce blind voting. Client UIs decide whether to show model names before collecting votes.
+
+### Blind Voting (Recommended)
+
+Hide model names until after vote submission.
+
+**Benefits**:
+- Eliminates brand bias
+- Pure quality assessment
+- More objective comparisons
+
+**Implementation**: Client-side logic
+
+### Revealed Voting
+
+Show model names immediately.
+
+**Benefits**:
+- Users can factor model reputation
+- Useful for testing specific models
+- Transparent about what's being compared
+
+**Use case**: When model identity is relevant (e.g., testing specific model version)
+
+<Tip>
+For unbiased quality assessment, hide model names until vote submitted. Reveal afterward for transparency.
+</Tip>
+
+## Vote Choice Psychology
+
+### Why "Tie" Exists
+
+Some responses are genuinely equal quality. Forcing users to pick creates artificial preference data.
+
+**Effect**: "Tie" votes prevent:
+- Random guessing when responses equal
+- Quality responses losing unfairly
+- Biased data from forced choices
+
+### Why "Both-Bad" Exists
+
+Sometimes both models produce poor responses. This outcome deserves representation.
+
+**Effect**: "Both-bad" votes:
+- Penalize both models appropriately
+- Identify prompts that challenge all models
+- Provide feedback that specific comparison was unhelpful
+
+## Statistical Edge Cases
+
+### New Model Bootstrap
+
+Model with zero votes has undefined win rate.
+
+**Solution**: Either exclude from rankings or assign default (e.g., 0% or 50%).
+
+**Current behavior**: Included in API response with actual win rate calculation (may be NaN if zero appearances).
+
+### Tie Inflation
+
+If users frequently vote "tie", all models accumulate wins without clear differentiation.
+
+**Mitigation**: Monitor tie rate. High tie rate may indicate:
+- Models are actually very similar
+- Prompts don't reveal quality differences
+- Users defaulting to "tie" instead of judging carefully
+
+### Vote Manipulation
+
+Malicious users could submit many votes favoring specific model.
+
+**Current state**: No rate limiting or duplicate detection.
+
+**Potential mitigation**: Limit votes per user per comparison (requires user tracking).
+
+## Next Steps
+
+<CardGroup cols="2">
+  <Card title="Chat Modes" icon="comments" href="/concepts/chat-modes">
+    How dual-chat enables voting
+  </Card>
+  <Card title="Model Selection" icon="robot" href="/concepts/model-selection">
+    How "topper" mode uses win rates
+  </Card>
+  <Card title="System Overview" icon="cube" href="/concepts/overview">
+    Architecture decisions
+  </Card>
+</CardGroup>

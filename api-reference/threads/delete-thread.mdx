@@ -1,0 +1,225 @@
+---
+title: "DELETE /api/threads/{id}"
+api: "DELETE /api/threads/{id}"
+description: "Delete a thread and all associated messages"
+---
+
+## Authentication
+
+**Required**: JWT Bearer token
+
+**JWT Claims Extraction** (Lines 430-434):
+```csharp
+sub | ClaimTypes.NameIdentifier → User UUID (required)
+```
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  Thread UUID
+
+  **Format**: Valid GUID
+  
+  **Validation**: Route constraint `:guid` (Line 423)
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'http://localhost:5079/api/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479' \
+  -H 'Authorization: Bearer YOUR_JWT_TOKEN'
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'http://localhost:5079/api/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479',
+  {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${jwt}`
+    }
+  }
+);
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.delete(
+    'http://localhost:5079/api/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479',
+    headers={'Authorization': f'Bearer {jwt}'}
+)
+
+result = response.json()
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 Success
+{
+  "success": true,
+  "message": "Thread deleted successfully"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "User ID claim missing"
+}
+```
+
+```json 404 NOT_FOUND
+{
+  "success": false,
+  "error": "Thread not found",
+  "code": "NOT_FOUND"
+}
+```
+
+```json 403 FORBIDDEN
+{
+  "success": false,
+  "error": "You do not have permission to delete this thread",
+  "code": "FORBIDDEN"
+}
+```
+
+```json 500 THREAD_DELETE_ERROR
+{
+  "success": false,
+  "error": "Database deletion failed",
+  "code": "THREAD_DELETE_ERROR"
+}
+```
+</ResponseExample>
+
+## Authorization
+
+**Ownership Verification** (Lines 442-456):
+```csharp
+var thread = await _threadsService.GetThreadAsync(threadId);
+if (thread == null) {
+    return NotFound("Thread not found");
+}
+
+if (thread.UserId != userId) {
+    return 403 FORBIDDEN;
+}
+```
+
+**Permission Rules**:
+- ONLY thread owner can delete
+- No admin override documented
+- Cannot delete other users' threads (even if public/unlisted)
+
+## Side Effects
+
+**Database Mutations** (Line 458):
+```csharp
+await _threadsService.DeleteThreadAsync(threadId);
+```
+
+**Cascade Deletions** (Not documented in controller, database constraint-dependent):
+
+Likely cascade deletes (based on FK constraints):
+- DELETE from `thread_messages` WHERE `thread_id = {threadId}`
+- Potential orphaned `comparisons` records (if not cascade deleted)
+- Potential orphaned `model_votes` records (if linked via comparison_id)
+
+**Note**: Cascade behavior not enforced by API contract (database schema-dependent)
+
+## Permissions
+
+**Who Can Delete**:
+- Thread owner only
+
+**Who Cannot Delete**:
+- Other authenticated users
+- Unauthenticated users
+- Public thread viewers
+
+**Visibility Independence**: Deletion rights same for all visibility levels
+
+## Edge Cases
+
+1. **Thread doesn't exist**: 404 (Lines 443-446)
+2. **Already deleted**: 404 (service returns null)
+3. **User is not owner**: 403 (Lines 448-456)
+4. **Thread has messages**: Deleted (cascade assumed)
+5. **Thread has comparisons**: Cascade behavior not specified by API contract
+6. **Thread has votes**: Cascade behavior not specified by API contract
+7. **Concurrent deletion**: Race condition possible (no locking documented)
+
+## Error Conditions
+
+| Code | HTTP | Cause | Controller Line |
+|------|------|-------|----------------|
+| N/A | 401 | JWT missing or invalid | Middleware |
+| N/A | 401 | User ID claim missing | 436-439 |
+| `NOT_FOUND` | 404 | Thread doesn't exist | 443-446 |
+| `FORBIDDEN` | 403 | Not thread owner | 448-456 |
+| `THREAD_DELETE_ERROR` | 500 | Service exception | 466-474 |
+
+**Exception Handling** (Lines 466-474):
+```csharp
+catch (Exception ex) {
+    return StatusCode(500, new { error = ex.Message, code = "THREAD_DELETE_ERROR" });
+}
+```
+
+**Database Constraint Violations**: Would return 500 with exception message
+
+## Behavioral Guarantees
+
+**Atomicity**: Database transaction-dependent (not enforced by controller)
+
+**Idempotency**: NOT idempotent
+- First call: 200 success
+- Second call: 404 not found
+
+**Irreversibility**: PERMANENT deletion
+- No soft delete
+- No recovery mechanism documented
+
+## Cascade Effects
+
+**Documented in Database Schema** (outside controller):
+
+Likely cascades based on foreign key constraints:
+- `thread_messages` table: CASCADE DELETE
+- `comparisons` table: Behavior not specified
+- `model_votes` table: Behavior not specified
+
+**Orphaned Data Risk**:
+- If comparisons not cascade deleted, may orphan comparison records
+- If votes not cascade deleted, may orphan vote records
+- Controller does not enforce cascade rules
+
+## Validation Order
+
+1. User ID from JWT (401 if missing)
+2. Thread existence (404 if not found)
+3. Ownership (403 if not owner)
+4. Deletion execution (500 if fails)
+
+## Recovery
+
+**No Undo**: Once deleted, thread cannot be recovered via API
+
+**Backup Recommendation**: Application should implement soft delete or backup before deletion
+
+**No Confirmation**: Controller does not require confirmation parameter
+
+## Security Implications
+
+**Data Loss**: Permanent deletion of:
+- Thread metadata
+- All messages in thread
+- Potentially associated comparisons and votes
+
+**Access Check**: Ownership verified before deletion
+
+**No Rate Limiting**: No deletion throttling documented
+
+**Audit Trail**: Not documented in controller (may exist in service layer)

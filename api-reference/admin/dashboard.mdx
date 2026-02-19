@@ -1,0 +1,52 @@
+---
+title: Admin Dashboard
+sidebarTitle: Dashboard
+description: Admin dashboard API endpoints — platform statistics, recent activity, model performance, and user stats.
+keywords: ["admin", "dashboard", "statistics", "analytics", "performance"]
+---
+
+## GET /api/admin/dashboard/stats
+
+Get overall platform statistics.
+
+### Response
+
+```json filename="Response"
+{
+  "success": true,
+  "data": {
+    "totalUsers": 1250,
+    "totalThreads": 5432,
+    "totalComparisons": 12345,
+    "totalVotes": 8765,
+    "activeModels": 15,
+    "timestamp": "2025-01-15T10:00:00Z"
+  }
+}
+```
+
+## GET /api/admin/dashboard/recent-activity
+
+Get recent platform activity.
+
+### Query parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limit` | integer | 10 | Number of recent items |
+
+### Response
+
+Returns a list of recent comparisons, votes, and user signups.
+
+## GET /api/admin/dashboard/model-performance
+
+Get performance metrics for all AI models — win rates, response times, total comparisons.
+
+## GET /api/admin/dashboard/user-stats
+
+Get user growth and engagement statistics.
+
+## GET /api/admin/dashboard/provider-stats
+
+Get AI provider health statistics — total calls, failure rates, active keys per provider.

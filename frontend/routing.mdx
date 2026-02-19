@@ -1,0 +1,69 @@
+---
+title: Routing
+sidebarTitle: Routing
+description: Frontend routing structure — file-based HTML pages with Cloudflare Worker clean URL support.
+keywords: ["routing", "file-based", "Cloudflare Worker", "clean URLs", "auth protection"]
+---
+
+## Routing model
+
+DualMind Lab uses **file-based routing** — each page is a separate HTML file. There is no client-side router.
+
+## Route map
+
+| URL Path | HTML File | Auth Required | Description |
+|----------|-----------|---------------|-------------|
+| `/` | `index.html` | Yes | Main chat and arena interface |
+| `/login` | `login/index.html` | No | Authentication page (Google OAuth) |
+| `/leaderboard` | `leaderboard/index.html` | No | Model rankings and statistics |
+| `/models` | `models/index.html` | Yes | Browse available AI models |
+| `/share` | `share/index.html` | No | View shared threads (public) |
+| `/about` | `about/index.html` | No | About DualMind Lab |
+| `/careers` | `careers/index.html` | No | Careers page |
+| `/how-it-works` | `how-it-works/index.html` | No | How the platform works |
+| `/faq` | `faq/index.html` | No | FAQ page |
+| `/privacy` | `privacy/index.html` | No | Privacy policy |
+| `/terms` | `terms/index.html` | No | Terms of service |
+| `/cookies` | `cookies/index.html` | No | Cookie policy |
+
+## Auth protection
+
+Pages that require authentication check for a valid Supabase session on load:
+
+```javascript filename="Auth guard pattern"
+// Pattern used in protected pages
+const { data: { session } } = await supabase.auth.getSession();
+if (!session) {
+    window.location.href = '/login';
+}
+```
+
+## Cloudflare Worker URL handling
+
+In production, the Cloudflare Worker (`worker.js`) provides clean URL support:
+
+1. **API proxy**: `/api/*` routes are forwarded to the backend
+2. **Exact match**: Tries to serve the exact path from static assets
+3. **HTML fallback**: For extensionless paths, appends `.html` (e.g., `/users` → `/users.html`)
+4. **SPA fallback**: Unmatched non-API routes serve `index.html`
+
+```javascript worker.js
+// Extensionless fallback
+const hasExtension = pathname.split('/').pop()?.includes('.');
+if (!hasExtension && env.ASSETS) {
+    htmlUrl.pathname = pathname.replace(/\/$/, '') + '.html';
+    let assetResponse = await env.ASSETS.fetch(new Request(htmlUrl, request));
+    if (assetResponse && assetResponse.status !== 404) return assetResponse;
+}
+```
+
+## Navigation
+
+Navigation between pages uses standard `<a>` tags. The sidebar and topbar are included as HTML partials in the admin panel but are inline in the main frontend.
+
+## Query parameters
+
+| Page | Parameter | Usage |
+|------|-----------|-------|
+| `/share` | `?thread={threadId}` | Thread ID to display |
+| `/` | `?thread={threadId}` | Resume specific thread |

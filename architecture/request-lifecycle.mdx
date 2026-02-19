@@ -1,0 +1,356 @@
+---
+title: "Request Lifecycle"
+description: "Detailed execution flow from HTTP request to response"
+keywords: ["request lifecycle", "middleware", "JWT validation", "provider execution", "response"]
+---
+
+## Single Chat Request Lifecycle
+
+### Phase 1: HTTP Reception
+
+```
+HTTP POST /api/arena/chat
+Authorization: Bearer {JWT}
+Body: { prompt, model, temperature, ... }
+```
+
+**Middleware Pipeline**:
+1. ASP.NET Core request logging
+2. JWT authentication middleware validates token
+3. CORS middleware (allows all origins in development)
+4. Request reaches `ArenaController.Chat()`
+
+### Phase 2: JWT Validation
+
+**Process**:
+```csharp
+[Authorize] attribute enforces JWT validation
+↓
+JWT middleware extracts claims
+↓
+ValidateIssuer: SUPABASE_URL/auth/v1
+ValidateAudience: "authenticated"
+ValidateLifetime: exp > DateTime.UtcNow
+↓
+User ID extracted from "sub" claim
+```
+
+**JWT Claims Required**:
+- `sub`: User UUID (becomes `userId` in code)
+- `email`: User email
+- `aud`: Must be "authenticated"
+- `iss`: Must match Supabase URL
+- `exp`: Expiration timestamp
+
+**Failure**: Returns 401 Unauthorized before controller method executes
+
+### Phase 3: User Synchronization
+
+```csharp
+await _userSyncService.EnsureUserExistsAsync(userId, email, fullName);
+```
+
+**Database Operation**:
+```sql
+INSERT INTO users (user_id, email, full_name, role, created_at)
+VALUES ($1, $2, $3, 'user', NOW())
+ON CONFLICT (user_id) DO UPDATE
+SET email = $2, full_name = $3;
+```
+
+**Characteristics**:
+- UPSERT operation (idempotent)
+- Executes on **every authenticated request**
+- Non-blocking (awaited but fast due to index)
+- Failure logged as warning, doesn't fail request
+
+### Phase 4: Model Selection
+
+**Random Selection**:
+```csharp
+var selectedModel = await _modelSelector.GetRandomModelAsync();
+```
+
+**Query**:
+```sql
+SELECT * FROM ai_models WHERE status = 'active' ORDER BY RANDOM() LIMIT 1;
+```
+
+**Explicit Selection**:
+```csharp
+var selectedModel = await _modelSelector.GetModelByNameAsync(request.Model);
+```
+
+**Validation**: If model not found or inactive, returns 400 Bad Request
+
+### Phase 5: Provider Execution
+
+**Provider Selection**:
+```csharp
+var provider = _providerFactory.GetProvider(selectedModel.ProviderName);
+```
+
+**Groq Provider Execution** (Primary):
+```csharp
+try {
+    var response = await _groqService.ChatCompletionAsync(
+        model: selectedModel.ModelName,
+        prompt: request.Prompt,
+        systemMessage: request.SystemMessage,
+        temperature: request.Temperature,
+        maxTokens: request.MaxTokens,
+        timeout: TimeSpan.FromSeconds(45)
+    );
+    return response;
+}
+catch (TimeoutException) { /* Fallback */ }
+catch (GroqException) { /* Fallback */ }
+```
+
+**Fallback Chain**:
+1. Groq with selected model (45s timeout)
+2. Groq with `llama-3.3-70b-versatile` (45s timeout)
+3. Bytez provider (45s timeout)
+4. Throw exception → 500 error response
+
+### Phase 6: Message Persistence
+
+**If threadId provided**:
+```csharp
+await _threadMessagesService.LogMessageAsync(
+    threadId: request.ThreadId,
+    userId: userId,
+    promptText: request.Prompt,
+    model1Name: selectedModel.ModelName,
+    model1Response: response.Message,
+    model1TimeMs: response.ResponseTimeMs,
+    model2Name: null,
+    model2Response: null,
+    model2TimeMs: null,
+    comparisonId: null
+);
+```
+
+**Database Operation**:
+```sql
+INSERT INTO thread_messages (
+    message_id, thread_id, prompt_text, model1_name, model1_response,
+    model1_time_ms, created_at
+) VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5, NOW());
+```
+
+**If threadId omitted**: No database write occurs
+
+### Phase 7: Response Construction
+
+```csharp
+return Ok(new {
+    message = response.Message,
+    model = new {
+        name = selectedModel.ModelName,
+        displayName = selectedModel.DisplayName,
+        provider = selectedModel.ProviderName
+    },
+    usage = new {
+        promptTokens = response.Usage.PromptTokens,
+        completionTokens = response.Usage.CompletionTokens,
+        totalTokens = response.Usage.TotalTokens
+    },
+    responseTimeMs = response.ResponseTimeMs,
+    sessionId = request.SessionId ?? Guid.NewGuid().ToString()
+});
+```
+
+**HTTP Response**:
+```
+200 OK
+Content-Type: application/json
+
+{ message, model, usage, responseTimeMs, sessionId }
+```
+
+## Dual Chat Request Lifecycle
+
+### Differences from Single Chat
+
+**Phase 4b: Model Pair Selection**
+
+```csharp
+var (model1, model2) = request.SelectionMode switch {
+    "random" => await _modelSelector.GetTwoRandomModelsAsync(),
+    "topper" => await _modelSelector.GetTopperAndRandomAsync(),
+    "manual" => (await _modelSelector.GetModelByNameAsync(request.Model1),
+                 await _modelSelector.GetModelByNameAsync(request.Model2)),
+    _ => throw new ArgumentException("Invalid selection mode")
+};
+```
+
+**Phase 5b: Parallel Execution**
+
+```csharp
+var task1 = ExecuteModelAsync(model1, request);
+var task2 = ExecuteModelAsync(model2, request);
+
+await Task.WhenAll(task1, task2);
+
+var response1 = await task1;
+var response2 = await task2;
+```
+
+**Execution Properties**:
+- Both models execute **simultaneously**
+- Independent timeout counters (45s each)
+- Independent fallback chains
+- One model failure doesn't block the other
+
+**Phase 6b: Comparison Persistence**
+
+```sql
+INSERT INTO comparisons (
+    comparison_id, user_id, prompt_text,
+    model1_id, model1_response, model1_time_ms,
+    model2_id, model2_response, model2_time_ms,
+    created_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW());
+```
+
+Then link to thread message:
+```sql
+INSERT INTO thread_messages (
+    message_id, thread_id, comparison_id, prompt_text, ...
+) VALUES (...);
+```
+
+## Streaming Request Lifecycle
+
+### Differences from Non-Streaming
+
+**Phase 1b: SSE Headers**
+
+```csharp
+Response.ContentType = "text/event-stream";
+Response.Headers.Add("Cache-Control", "no-cache");
+Response.Headers.Add("Connection", "keep-alive");
+await Response.Body.FlushAsync();
+```
+
+**Phase 5c: Streaming Callback**
+
+```csharp
+await _groqService.ChatCompletionStreamAsync(
+    model: selectedModel.ModelName,
+    prompt: request.Prompt,
+    onChunk: async (chunk) => {
+        var sseEvent = $"data: {{\"type\":\"ai.stream.delta\",\"delta\":{{\"text\":\"{chunk}\"}}}}\n\n";
+        await Response.WriteAsync(sseEvent);
+        await Response.Body.FlushAsync();
+    },
+    cancellationToken: HttpContext.RequestAborted
+);
+```
+
+**Client Disconnect Handling**:
+```csharp
+HttpContext.RequestAborted.Register(() => {
+    // Provider cancels stream
+    // No exception thrown to client (they disconnected)
+});
+```
+
+**Phase 6c: No Persistence**
+
+Streaming endpoints **do not write to database**. Client must use non-streaming endpoint separately if persistence needed.
+
+## Error Handling Flow
+
+### Provider Failure
+
+```
+Groq timeout (45s)
+↓
+Log warning
+↓
+Retry with llama-3.3-70b-versatile via Groq (45s)
+↓
+Log warning
+↓
+Try Bytez provider (45s)
+↓
+All failed → throw ProviderException
+↓
+Global exception handler catches
+↓
+Return 500 with error envelope
+```
+
+### Authorization Failure
+
+```
+Thread.UserId != JWT.sub
+↓
+Throw UnauthorizedAccessException
+↓
+Global exception handler catches
+↓
+Return 403 Forbidden
+```
+
+### Validation Failure
+
+```
+Model name invalid
+↓
+Throw ArgumentException
+↓
+Global exception handler catches
+↓
+Return 400 Bad Request
+```
+
+## Performance Characteristics
+
+### Request Timing Breakdown
+
+**Single Chat** (~2000ms):
+- JWT validation: ~5ms
+- User sync: ~10ms (indexed UPSERT)
+- Model selection: ~5ms (indexed query)
+- Provider execution: ~1500-2000ms (AI inference)
+- Message persistence: ~10ms (INSERT)
+- Response serialization: ~5ms
+
+**Dual Chat** (~2000ms):
+- JWT validation: ~5ms
+- User sync: ~10ms
+- Model selection: ~10ms (2 queries)
+- **Parallel provider execution: max(1500ms, 1600ms) ≈ 1600ms**
+- Comparison persistence: ~15ms (2 INSERTs)
+- Response serialization: ~10ms
+
+**Key Insight**: Dual chat is only marginally slower than single chat due to parallel execution.
+
+## Database Transaction Boundaries
+
+**User Sync**: Auto-commit (single UPSERT)
+
+**Message Persistence**: Auto-commit (single INSERT)
+
+**Dual Chat Persistence**: No explicit transaction (2 sequential INSERTs, not atomic)
+
+**Constraint**: No multi-statement transactions. Each database operation commits immediately.
+
+**Implication**: Comparison can be written without corresponding message (if thread message insert fails). This is acceptable since comparisons are first-class entities.
+
+## Next Steps
+
+<CardGroup cols="2">
+  <Card title="Database Schema" icon="database" href="/architecture/database-schema">
+    Table structures and relationships
+  </Card>
+  <Card title="System Invariants" icon="shield-check" href="/architecture/invariants">
+    Enforceable constraints and rules
+  </Card>
+  <Card title="Authentication Flow" icon="key" href="/architecture/authentication">
+    JWT validation internals
+  </Card>
+</CardGroup>

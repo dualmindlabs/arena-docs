@@ -1,0 +1,422 @@
+---
+title: "System Invariants"
+description: "Enforceable constraints and immutable rules"
+keywords: ["invariants", "constraints", "rules", "guarantees", "idempotency"]
+---
+
+## Authentication Invariants
+
+### JWT-INV-001: Token Structure
+
+**Rule**: All JWTs MUST contain required claims
+
+**Required Claims**:
+```json
+{
+  "sub": "<user_uuid>",
+  "email": "<user_email>",
+  "aud": "authenticated",
+  "iss": "https://<PROJECT>.supabase.co/auth/v1",
+  "exp": <unix_timestamp>
+}
+```
+
+**Violation Detection**:
+```csharp
+if (claims["aud"] != "authenticated") throw UnauthorizedException;
+if (!claims.ContainsKey("sub")) throw UnauthorizedException;
+if (claims["exp"] < DateTimeOffset.UtcNow) throw UnauthorizedException;
+```
+
+### JWT-INV-002: User Ownership
+
+**Rule**: `user_id` extracted from JWT `sub` claim MUST match resource owner for mutations
+
+**Applies To**: Thread updates, thread deletions, share endpoint
+
+**Enforcement**:
+```csharp
+var thread = await GetThreadById(threadId);
+if (thread.UserId != jwtUserId) throw ForbiddenException;
+```
+
+**Exemptions**: Read operations on public/unlisted threads
+
+### JWT-INV-003: User Sync Idempotency
+
+**Rule**: User sync MUST be idempotent (UPSERT operation)
+
+**Constraint**: Multiple sync calls with same `user_id` do not create duplicates
+
+**SQL Guarantee**:
+```sql
+ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email;
+```
+
+## Database Invariants
+
+### DB-INV-001: UUID Primary Keys
+
+**Rule**: All primary keys MUST be UUIDs (RFC 4122 v4)
+
+**Tables**: users, threads, thread_messages, comparisons, model_votes, ai_models
+
+**Generation**: `uuid_generate_v4()` (database) or `Guid.NewGuid()` (C#)
+
+**Rationale**: 
+- Globally unique without coordination
+- 2^122 possible values (collision probability negligible)
+- URL-safe identifiers
+
+### DB-INV-002: Timestamp Presence
+
+**Rule**: All tables MUST have `created_at` timestamp
+
+**Constraint**: `created_at` defaults to `NOW()` on insert, never null
+
+**Enforcement**:
+```sql
+created_at TIMESTAMP NOT NULL DEFAULT NOW()
+```
+
+**Immutability**: `created_at` never updated after insert
+
+### DB-INV-003: Cascade Deletion
+
+**Rule**: Foreign key deletions MUST cascade or nullify (no orphans)
+
+**Cascade Paths**:
+```
+users → threads → thread_messages
+users → comparisons → model_votes
+```
+
+**Set Null Paths**:
+```
+comparisons → thread_messages (comparison_id SET NULL)
+ai_models → model_votes (winner_model_id SET NULL)
+```
+
+**Violation Prevention**: PostgreSQL foreign key constraints enforced at database level
+
+### DB-INV-004: UPSERT Idempotency
+
+**Rule**: User sync operations MUST be idempotent
+
+**Guarantee**: Running sync N times ≡ Running sync 1 time
+
+**Implementation**:
+```sql
+INSERT ... ON CONFLICT (user_id) DO UPDATE ...
+```
+
+## API Compatibility Invariants
+
+### API-INV-001: Response Envelope
+
+**Rule**: All JSON responses MUST use standard envelope
+
+**Success Format**:
+```json
+{
+  "success": true,  // optional, implied
+  "data": { ... }
+}
+```
+
+**Error Format**:
+```json
+{
+  "success": false,
+  "error": "Human-readable message",
+  "code": "ERROR_CODE"
+}
+```
+
+**Violation**: Naked JSON objects without envelope (except health endpoint)
+
+### API-INV-002: Error Code Stability
+
+**Rule**: Error codes MUST NOT change meaning across versions
+
+**Stable Codes**:
+- `UNAUTHORIZED`: Missing/invalid JWT
+- `FORBIDDEN`: Valid JWT but insufficient permissions
+- `INVALID_REQUEST`: Validation failure
+- `PROVIDER_ERROR`: AI provider failure
+- `NOT_FOUND`: Resource does not exist
+
+**Change Policy**: New codes allowed, existing codes must maintain semantics
+
+### API-INV-003: ISO8601 Timestamps
+
+**Rule**: All datetime fields MUST use ISO8601 format with UTC timezone
+
+**Format**: `YYYY-MM-DDTHH:mm:ss.sssZ`
+
+**Example**: `2024-01-15T10:30:00.000Z`
+
+**Enforcement**:
+```csharp
+timestamp.ToString("o", CultureInfo.InvariantCulture)
+```
+
+### API-INV-004: Pagination Limits
+
+**Rule**: List endpoints MUST enforce maximum page size
+
+**Limits**:
+- Default: 50 items
+- Maximum: 500 items
+- Minimum: 1 item
+
+**Enforcement**:
+```csharp
+int limit = Math.Min(Math.Max(request.Limit ?? 50, 1), 500);
+```
+
+## Realtime Protocol Invariants
+
+### SSE-INV-001: Event Format
+
+**Rule**: All SSE events MUST follow format: `data: {json}\n\n`
+
+**Structure**:
+```
+data: {"type":"ai.stream.delta","delta":{"text":"chunk"}}\n\n
+```
+
+**Constraints**:
+- Prefix: `data: `
+- JSON: Single-line (no embedded newlines)
+- Suffix: `\n\n` (double newline)
+
+**Violation Detection**: Event parsing failure on client
+
+### SSE-INV-002: Unidirectional Flow
+
+**Rule**: SSE communication MUST be server→client only
+
+**Constraint**: Client cannot send data during SSE stream
+
+**Protocol**: HTTP long-polling, not bidirectional WebSocket
+
+**Implication**: All request parameters sent in initial HTTP POST
+
+### SSE-INV-003: Event Type Contract
+
+**Rule**: Event types MUST be from defined set
+
+**Allowed Types**:
+- `ai.stream.start`
+- `ai.stream.delta`
+- `ai.stream.done`
+- `ai.error`
+
+**Violation**: Undefined event type breaks client parsers
+
+**Enforcement**: TypeScript/C# enums
+
+### SSE-INV-004: Event Ordering
+
+**Rule**: SSE events MUST follow lifecycle order
+
+**Valid Sequence**:
+```
+start → delta* → done
+start → error
+```
+
+**Invalid Sequences**:
+```
+delta → start  (❌ start must be first)
+done → delta   (❌ done must be last)
+done → done    (❌ done is terminal)
+```
+
+**Enforcement**: State machine in stream handler
+
+## Idempotency Invariants
+
+### IDEMP-INV-001: GET Request Safety
+
+**Rule**: GET requests MUST NOT mutate state
+
+**Guarantee**: Multiple identical GET calls produce same result
+
+**Applies To**: All read endpoints
+
+**Counter-example**: User sync executes UPSERT even on GET (acceptable side effect)
+
+### IDEMP-INV-002: POST Chat Non-Idempotency
+
+**Rule**: Chat requests MUST NOT be idempotent
+
+**Rationale**: Each request should generate fresh AI response, not cached result
+
+**Behavior**: Identical prompts → different responses (due to temperature > 0)
+
+**Constraint**: No response caching based on prompt hash
+
+### IDEMP-INV-003: User Sync Idempotency
+
+**Rule**: POST /api/users/sync MUST be idempotent
+
+**Guarantee**: Multiple sync calls with same user data → same database state
+
+**Mechanism**: UPSERT operation
+
+### IDEMP-INV-004: Vote Non-Idempotency
+
+**Rule**: Vote submissions MUST allow duplicates
+
+**Rationale**: Enables vote changes without explicit DELETE+INSERT
+
+**Design**: Insert new row for each vote (no UPDATE on existing vote)
+
+**Query Impact**: Vote statistics aggregate all votes (duplicates counted)
+
+### IDEMP-INV-005: DELETE Idempotency
+
+**Rule**: DELETE requests MUST be idempotent
+
+**Guarantee**: Deleting already-deleted resource returns success
+
+**Implementation**: Check if resource exists, return 200 regardless
+
+## Provider Invariants
+
+### PROV-INV-001: 45-Second Timeout
+
+**Rule**: Each provider attempt MUST timeout after 45 seconds
+
+**Enforcement**:
+```csharp
+cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(45));
+```
+
+**Applies To**: Groq primary, Groq retry, Bytez fallback
+
+**Total Max Time**: 135 seconds (3 attempts × 45s)
+
+### PROV-INV-002: Fallback Chain
+
+**Rule**: Provider failures MUST follow defined fallback order
+
+**Chain**:
+1. Groq with selected model
+2. Groq with `llama-3.3-70b-versatile`
+3. Bytez provider
+4. Throw exception
+
+**Invariant**: Steps execute sequentially (not parallel)
+
+### PROV-INV-003: Independent Dual-Chat Fallback
+
+**Rule**: In dual-chat, each model has independent fallback chain
+
+**Guarantee**: Model 1 failure does not affect Model 2 execution
+
+**Parallel Execution**: `Task.WhenAll(task1, task2)`
+
+**Partial Results**: If one succeeds and one fails, return single-model response
+
+## Security Invariants
+
+### SEC-INV-001: JWT Signature Validation
+
+**Rule**: All authenticated endpoints MUST validate JWT signature
+
+**Algorithm**: HS256
+
+**Secret**: `JWT_SECRET` environment variable
+
+**Validation**: ASP.NET Core JWT middleware (automatic)
+
+**Development Exception**: Signature validation may be skipped if `JWT_SECRET` not set (logged as warning)
+
+### SEC-INV-002: HTTPS in Production
+
+**Rule**: Production deployments MUST use HTTPS
+
+**Rationale**: JWT tokens transmitted in Authorization header (bearer token security)
+
+**Enforcement**: Infrastructure-level (reverse proxy/load balancer)
+
+### SEC-INV-003: No Service Role Exposure
+
+**Rule**: Supabase service role key MUST NOT be exposed to clients
+
+**Storage**: Server-side environment variable only
+
+**Client Keys**: Clients use Supabase anon key (limited permissions)
+
+**Backend Usage**: Service role for unrestricted database access (bypasses RLS)
+
+## Data Consistency Invariants
+
+### DATA-INV-001: Thread Ownership
+
+**Rule**: `thread.user_id` MUST match creator's JWT `sub` at creation
+
+**Immutability**: `user_id` cannot change after thread creation
+
+**Enforcement**: Set from JWT claim, no UPDATE allowed
+
+### DATA-INV-002: Comparison Integrity
+
+**Rule**: Comparison models MUST be different
+
+**Constraint**: `model1_id != model2_id`
+
+**Validation**:
+```csharp
+if (request.Model1 == request.Model2) 
+    throw new ArgumentException("Models must be different");
+```
+
+### DATA-INV-003: Vote Choice Validity
+
+**Rule**: Vote choice MUST be from defined set
+
+**Valid Choices**: `left`, `right`, `tie`, `both-bad`
+
+**Enforcement**:
+```csharp
+if (!new[] {"left","right","tie","both-bad"}.Contains(voteChoice))
+    throw new ArgumentException("Invalid vote choice");
+```
+
+### DATA-INV-004: Message-Comparison Link
+
+**Rule**: Thread message with `comparison_id` MUST reference valid comparison
+
+**Foreign Key**: `thread_messages.comparison_id → comparisons.comparison_id`
+
+**Cascade**: If comparison deleted, message's `comparison_id` set to NULL
+
+## Violation Detection
+
+### Monitoring Invariant Violations
+
+**Health Checks**: Monitor API response times for timeout violations
+
+**Database Logs**: Check foreign key constraint violation errors
+
+**Application Logs**: `UnauthorizedException` count indicates auth invariant violations
+
+**Metrics**:
+- 401 error rate (JWT validation failures)
+- 403 error rate (ownership violations)
+- 500 error rate (provider timeout violations)
+
+## Next Steps
+
+<CardGroup cols="2">
+  <Card title="Request Lifecycle" icon="diagram-project" href="/architecture/request-lifecycle">
+    How invariants are enforced in execution
+  </Card>
+  <Card title="Database Schema" icon="database" href="/architecture/database-schema">
+    Schema-level constraint enforcement
+  </Card>
+</CardGroup>

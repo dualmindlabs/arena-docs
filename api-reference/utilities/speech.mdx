@@ -1,0 +1,244 @@
+---
+title: "POST /api/speech/generate"
+api: "POST /api/speech/generate"
+description: "Generate speech audio from text"
+---
+
+## Authentication
+
+**Not Required**: No `[Authorize]` attribute
+
+Public endpoint
+
+## Request Body
+
+<ParamField body="text" type="string" required>
+  Text to convert to speech
+
+  **Validation** (Lines 22-30):
+  ```csharp
+  if (request == null || string.IsNullOrEmpty(request.Text)) {
+      return BadRequest("Text is required");
+  }
+  ```
+  
+  **Constraints**:
+  - MUST NOT be null
+  - MUST NOT be empty string
+  - Max length not enforced by controller (Groq API limits apply)
+</ParamField>
+
+<ParamField body="voice" type="string">
+  Voice identifier
+
+  **Default** (Line 34): `"Celeste-PlayAI"` if not provided
+  
+  **Validation**: None in controller
+  
+  **Invalid voice**: Error behavior not enforced by server contract (service-level validation)
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST 'http://localhost:5079/api/speech/generate' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "text": "Hello, this is a test.",
+    "voice": "Celeste-PlayAI"
+  }' \
+  --output speech.wav
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5079/api/speech/generate', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    text: 'Hello, this is a test.',
+    voice: 'Celeste-PlayAI'
+  })
+});
+
+const audioBlob = await response.blob();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'http://localhost:5079/api/speech/generate',
+    json={
+        'text': 'Hello, this is a test.',
+        'voice': 'Celeste-PlayAI'
+    }
+)
+
+with open('speech.wav', 'wb') as f:
+    f.write(response.content)
+```
+</RequestExample>
+
+<ResponseExample>
+```text 200 Success
+Content-Type: audio/wav
+Content-Disposition: attachment; filename="speech.wav"
+
+[Binary WAV audio data]
+```
+
+```json 400 INVALID_REQUEST
+{
+  "success": false,
+  "error": "Text is required",
+  "code": "INVALID_REQUEST"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "success": false,
+  "error": "Groq TTS API error: Rate limit exceeded"
+}
+```
+</ResponseExample>
+
+## Response Format
+
+**Content-Type**: `audio/wav` (Line 36)
+
+**Content-Disposition**: `attachment; filename="speech.wav"` (Line 36)
+
+**Binary Data**: WAV audio file bytes (Line 36)
+
+**No JSON**: Success response is binary audio, not JSON
+
+## Side Effects
+
+**External API Call** (Line 34):
+```csharp
+var audioBytes = await _groqService.GenerateSpeechAsync(request.Text, request.Voice ?? "Celeste-PlayAI");
+```
+
+**Groq TTS API**:
+- Calls Groq text-to-speech API
+- API endpoint not documented in controller
+- Authentication via Groq API key (service-level)
+
+**No Database Operations**: Stateless endpoint
+
+## Authorization
+
+**Public Access**: No authentication required
+
+**Security Risk**: Anyone can generate speech
+- No rate limiting documented in controller
+- Groq API rate limits apply
+
+## Permissions
+
+**Who Can Generate**: Anyone (unauthenticated access allowed)
+
+**Abuse Potential**: Public endpoint could be rate-limited at infrastructure level
+
+## Edge Cases
+
+1. **Null text**: 400 error (Lines 22-30)
+2. **Empty text**: 400 error (Lines 22-30)
+3. **Null voice**: Uses default `"Celeste-PlayAI"` (Line 34)
+4. **Invalid voice**: Service-level error (not enforced by server contract)
+5. **Very long text**: Groq API limits apply (not enforced by controller)
+6. **Special characters**: Passed to Groq as-is
+
+## Error Conditions
+
+| Code | HTTP | Cause | Controller Line |
+|------|------|-------|----------------|
+| `INVALID_REQUEST` | 400 | Text null or empty | 22-30 |
+| N/A | 500 | Groq API error | 38-45 |
+| N/A | 500 | Network timeout | 38-45 |
+
+**Exception Handling** (Lines 38-45):
+```csharp
+catch (Exception ex) {
+    return StatusCode(500, new { error = ex.Message });
+}
+```
+
+**Error Exposure**: Exception message from Groq API exposed to client
+
+## Behavioral Guarantees
+
+**Idempotency**: YES
+- Same text + voice = same audio output
+- Safe to retry
+
+**Timeout**: Not enforced by controller (service-level)
+
+**File Size**: Not predictable (depends on text length)
+
+## Performance Characteristics
+
+**Response Time**: Not guaranteed by API contract
+- Implementation-defined (depends on Groq API)
+- Text length correlation not enforced by server contract
+
+**Audio Quality**: Groq TTS quality (not configurable in controller)
+
+**Streaming**: Not supported (entire audio generated before response)
+
+## Groq TTS Integration
+
+**Service** (Line 11): `GroqService`
+
+**Method** (Line 34): `GenerateSpeechAsync(text, voice)`
+
+**Voice Options**: Not documented in controller
+- Default: `"Celeste-PlayAI"`
+- Other voices not enforced by server contract (Groq API-dependent)
+
+## Audio Format
+
+**Format**: WAV (Line 36)
+
+**Encoding**: Not specified by API contract (Groq default)
+
+**Sample Rate**: Not specified by API contract
+
+**Channels**: Not specified by API contract
+
+## Rate Limiting
+
+**Controller**: None
+
+**Groq API**: Subject to Groq rate limits
+- Free tier: Limited requests/minute
+- Paid tier: Higher limits
+
+**Client Retry**: Should implement exponential backoff for 429 errors
+
+## Use Cases
+
+**Text-to-Speech**:
+- Convert chat responses to audio
+- Accessibility features
+- Voice assistants
+
+**Content Generation**:
+- Generate audio announcements
+- Create voice messages
+
+## Security Implications
+
+**Public Endpoint**: No authentication
+- Could be abused for free TTS generation
+- Should implement rate limiting at infrastructure level
+
+**Data Exposure**: Text sent to Groq API
+- No PII validation
+- Groq's data retention policies apply
+
+**Cost**: Each request costs Groq API credits
+- No user attribution
+- No quota enforcement in controller

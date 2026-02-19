@@ -1,0 +1,200 @@
+---
+title: Data Flow
+sidebarTitle: Data Flow
+description: End-to-end request lifecycle and data flow diagrams for every major operation in DualMind Lab. Critical for AI agents understanding how data moves through the system.
+keywords: ["data flow", "sequence diagrams", "request lifecycle", "Mermaid", "operations"]
+---
+
+## Dual chat comparison flow (complete)
+
+This is the primary user flow — the arena battle. Every step is documented for code generation accuracy.
+
+<Frame caption="Complete dual-chat arena flow — from login to model reveal">
+```mermaid
+sequenceDiagram
+    participant U as User Browser
+    participant FE as Frontend (JS)
+    participant SA as Supabase Auth
+    participant API as .NET Backend
+    participant MS as ModelSelector
+    participant CPF as ChatProviderFactory
+    participant GP as GroqService
+    participant DB as Supabase DB
+
+    Note over U,DB: Step 1: Authentication (happens once per session)
+    U->>FE: Click "Login with Google"
+    FE->>SA: supabase.auth.signInWithOAuth({provider: 'google'})
+    SA-->>FE: JWT access_token (HS256, sub=user_id)
+    FE->>FE: Store token in Supabase session
+
+    Note over U,DB: Step 2: Create thread (optional)
+    FE->>API: POST /api/threads {title: "New Chat"} + Bearer token
+    API->>API: Extract user_id from JWT 'sub' claim
+    API->>DB: UserSyncService.EnsureUserExistsAsync(userId)
+    API->>DB: INSERT INTO threads (thread_id, user_id, title)
+    API-->>FE: {threadId, userId, title, createdAt}
+
+    Note over U,DB: Step 3: Send prompt to arena
+    U->>FE: Types "Explain quantum computing" + clicks Send
+    FE->>API: POST /api/arena/dualchat {prompt, threadId} + Bearer token
+
+    Note over API,DB: Step 4: Model selection
+    API->>MS: GetTwoRandomModelsAsync()
+    MS->>DB: SELECT * FROM ai_models WHERE status='active'
+    DB-->>MS: [model1: "llama-3.3-70b-versatile", model2: "mixtral-8x7b-32768"]
+    MS-->>API: (model1, model2)
+
+    Note over API,GP: Step 5: Parallel AI execution
+    par Agent 1
+        API->>CPF: GetProvider("groq")
+        CPF-->>API: GroqService
+        API->>GP: ChatAsync("llama-3.3-70b-versatile", prompt)
+        GP->>GP: ExecuteWithRetryAsync(apiKey => call Groq API)
+        GP-->>API: GroqResponse {message, tokens}
+    and Agent 2
+        API->>CPF: GetProvider("groq")
+        CPF-->>API: GroqService
+        API->>GP: ChatAsync("mixtral-8x7b-32768", prompt)
+        GP-->>API: GroqResponse {message, tokens}
+    end
+
+    Note over API,DB: Step 6: Persist results
+    API->>DB: MessageLogger.LogMessageAsync(session, model1, "agent1")
+    API->>DB: MessageLogger.LogMessageAsync(session, model2, "agent2")
+    API->>DB: UserSyncService.EnsureUserExistsAsync(userId)
+    API->>DB: ComparisonLogger.LogComparisonAsync(comparisonId, ...)
+    API->>DB: ThreadMessagesService.LogDualAsync(threadId, ...)
+
+    Note over API,FE: Step 7: Return response
+    API-->>FE: {success, agent1, agent2, comparisonId, arena}
+    FE-->>U: Display both responses side-by-side (model names hidden)
+
+    Note over U,DB: Step 8: User votes
+    U->>FE: Clicks "Response A is better"
+    FE->>API: POST /api/votes/model-vote {comparisonId, winner: "agent1"}
+    API->>DB: INSERT INTO model_votes (comparison_id, winner_model_id, user_id)
+    API-->>FE: {success: true}
+    FE-->>U: Reveal model names, show vote confirmation
+</Frame>
+
+## Single chat flow
+
+<Frame caption="Single chat with automatic fallback chain">
+```mermaid
+flowchart TD
+    A[Client POST /api/arena/chat] --> B{Model specified?}
+    B -->|"model=auto or null"| C[ModelSelector.GetRandomModelAsync]
+    B -->|"model=specific"| D[Use specified model]
+    C --> E[ExecuteWithFallbackAsync]
+    D --> E
+    E --> F{Provider resolves?}
+    F -->|Yes| G[Provider.ChatAsync with 45s timeout]
+    F -->|No| H[Fallback to GroqService]
+    G --> I{Success?}
+    I -->|Yes| J[Build ChatResponse]
+    I -->|No| K{Provider was Groq?}
+    K -->|No| L[Fallback to Groq + llama-3.3-70b]
+    K -->|Yes| M[Try alternative Groq model]
+    L --> J
+    M --> J
+    H --> G
+    J --> N[Log message]
+    N --> O{ThreadId provided?}
+    O -->|Yes| P[ThreadMessagesService.LogSingleAsync]
+    O -->|No| Q[Return response]
+    P --> Q
+```
+</Frame>
+
+## Streaming chat flow
+
+<Frame caption="SSE streaming flow — tokens delivered in real-time">
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as Backend
+    participant Provider as GroqService
+
+    Client->>API: POST /api/arena/chat/stream {prompt, model}
+    API->>API: Set Content-Type: text/event-stream
+    API->>Provider: StreamAsync(request, onEvent, cancellationToken)
+    Provider->>Provider: POST to Groq API with stream=true
+
+    loop For each SSE chunk from Groq
+        Provider-->>API: AIStreamEvent {object: "ai.stream.delta", delta: {text: "..."}}
+        API-->>Client: data: {"object":"ai.stream.delta","delta":{"type":"output_text","text":"Hello "}}
+    end
+
+    Provider-->>API: AIStreamEvent {object: "ai.stream.done", finishReason: "stop"}
+    API-->>Client: data: {"object":"ai.stream.done","finishReason":"stop"}
+```
+</Frame>
+
+**SSE event types:**
+
+| Event `object` | Description | Fields |
+|----------------|-------------|--------|
+| `ai.stream.delta` | Content chunk | `delta.type` = `"output_text"`, `delta.text` = chunk text |
+| `ai.stream.done` | Stream complete | `finishReason` = `"stop"`, optional `usage` |
+| `ai.error` | Error occurred | `code`, `message` |
+
+## Voting data flow
+
+<Frame caption="Vote processing pipeline">
+```mermaid
+flowchart TD
+    A[User sees two responses] --> B[Clicks vote button]
+    B --> C[Frontend POST /api/votes/model-vote]
+    C --> D[Backend validates comparisonId exists]
+    D --> E[Resolve winner model name to model_id]
+    E --> F[INSERT INTO model_votes]
+    F --> G[Update model statistics cache]
+    G --> H[Return success + updated stats]
+```
+</Frame>
+
+## Thread visibility and sharing
+
+<Frame caption="Thread visibility access control">
+```mermaid
+flowchart TD
+    A[Thread created] --> B[Default visibility: private]
+    B --> C{Owner changes visibility?}
+    C -->|"PATCH /api/threads/{id}/visibility"| D{New visibility}
+    D -->|private| E[Only owner can access]
+    D -->|public| F[Anyone can access if public_sharing flag enabled]
+    D -->|unlisted| G[Anyone with link can access if public_sharing flag enabled]
+
+    H[Someone requests thread] --> I{public_sharing feature flag?}
+    I -->|Disabled| J[Require authentication + ownership check]
+    I -->|Enabled| K{Thread visibility?}
+    K -->|public/unlisted| L[Allow anonymous access]
+    K -->|private| J
+```
+</Frame>
+
+## API key rotation flow
+
+```mermaid
+flowchart TD
+    A[Chat request arrives] --> B{GROQ_API_KEY env var set?}
+    B -->|Yes| C[Use env var key]
+    B -->|No| D[ProviderConfigService.GetNextKeyAsync]
+    D --> E{Active keys available?}
+    E -->|No| F[Throw ProviderExhaustedException]
+    E -->|Yes| G[Try key with lowest failure count]
+    G --> H{Request succeeds?}
+    H -->|Yes| I[ReportKeySuccessAsync]
+    H -->|No| J[Classify error type]
+    J --> K{Error type?}
+    K -->|Auth/RateLimit/Quota| L[Mark key, try next key immediately]
+    K -->|Timeout/Server| M{Already retried transient?}
+    M -->|No| N[Try next key once]
+    M -->|Yes| O[Rethrow error]
+    L --> D
+    N --> D
+    C --> P{Success?}
+    P -->|Yes| Q[Return response]
+    P -->|No, auth error| R[Throw with helpful message]
+```
+</Frame>

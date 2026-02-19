@@ -1,0 +1,119 @@
+---
+title: Admin Panel Architecture
+sidebarTitle: Admin Panel
+description: Admin panel architecture — Cloudflare Workers dashboard with API proxy, CRUD for all entities.
+keywords: ["admin", "Cloudflare Workers", "dashboard", "CRUD", "proxy"]
+---
+
+## Overview
+
+The admin panel is a separate **Cloudflare Workers** application providing a management dashboard for all DualMind Lab entities: users, AI models, threads, comparisons, votes, and providers.
+
+## Technology stack
+
+| Aspect | Choice |
+|--------|--------|
+| **Language** | Vanilla JavaScript |
+| **Hosting** | Cloudflare Workers |
+| **Bundler** | Wrangler (Cloudflare CLI) |
+| **API Access** | Proxied through Worker to backend |
+
+## Directory structure
+
+```
+DualMind Admin UI/
+├── public/
+│   ├── js/
+│   │   ├── api/              # Admin API client
+│   │   ├── pages/            # Page-specific logic
+│   │   └── utils.js          # Shared utilities
+│   ├── partials/
+│   │   ├── sidebar.html      # Navigation sidebar
+│   │   └── topbar.html       # Top bar
+│   ├── assets/
+│   │   ├── css/              # Stylesheets
+│   │   └── js/               # Vendor scripts
+│   ├── index.html            # Dashboard
+│   ├── users.html            # User management
+│   ├── models.html           # Model management
+│   ├── comparisons.html      # Comparison browser
+│   ├── config.js             # API base URL
+│   └── auth-gate.js          # Admin auth check
+├── worker.js                 # Cloudflare Worker entry
+├── wrangler.toml             # Deployment config
+└── package.json
+```
+
+## Worker proxy pattern
+
+The `worker.js` is the entry point. It handles three responsibilities:
+
+### 1. API proxy (`/api/*`)
+
+All requests starting with `/api/` are forwarded to the backend:
+
+```javascript worker.js
+if (pathname.startsWith('/api/')) {
+    const backendUrl = env.BACKEND_URL || 'https://api.dualmindlab.tech';
+    const backendRequestUrl = new URL(pathname + url.search, backendUrl);
+    // Forward with original headers + X-Forwarded-Host
+    const backendResponse = await fetch(new Request(backendRequestUrl, {
+        method: request.method,
+        headers: headers,
+        body: request.method !== 'GET' ? request.body : null,
+    }));
+    // Add CORS headers and return
+}
+```
+
+### 2. Static file serving
+
+Non-API requests are served from the `ASSETS` binding (Cloudflare Workers Sites KV):
+
+```javascript filename="worker.js"
+if (env.ASSETS) {
+    let assetResponse = await env.ASSETS.fetch(request);
+    // Add security headers: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection
+}
+```
+
+### 3. Clean URL routing
+
+- Extensionless paths try `.html` suffix (e.g., `/users` serves `users.html`)
+- Unmatched routes fall back to `index.html`
+
+## Admin API endpoints
+
+All admin endpoints are at `/api/admin/*` on the backend. The admin panel calls these through its Worker proxy.
+
+| Page | Backend endpoints | Operations |
+|------|-------------------|------------|
+| Dashboard | `/api/admin/dashboard/stats`, `/recent-activity`, `/model-performance` | Read-only stats |
+| Users | `/api/admin/users` | List, create, update, delete, search |
+| Models | `/api/admin/models` | List, create, update, delete, search, toggle status |
+| Threads | `/api/admin/threads` | List, create, update, delete, search by user |
+| Comparisons | `/api/admin/comparisons` | List, delete, search, filter by user/model |
+| Votes | `/api/admin/votes` | List, delete, stats by model |
+| Providers | `/api/admin/providers` | CRUD providers, manage API keys |
+
+## Authentication
+
+The admin panel uses the same Supabase JWT as the main frontend. The `auth-gate.js` script checks for a valid session on page load and redirects to login if missing.
+
+<Note>
+Admin endpoints on the backend currently do not enforce role-based access control. Any authenticated user can access admin APIs. This is a known limitation for the college project scope.
+</Note>
+
+## Deployment
+
+```bash filename="Terminal"
+# Development
+npm run dev          # wrangler dev (local)
+
+# Production
+npm run deploy       # wrangler deploy
+npm run deploy:prod  # wrangler deploy --env production
+```
+
+Environment variables are configured in `wrangler.toml`:
+- `BACKEND_URL` — Backend API base URL

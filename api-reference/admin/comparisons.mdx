@@ -1,0 +1,71 @@
+---
+title: Admin Comparisons API
+sidebarTitle: Comparisons
+description: Admin comparison management — list, view, delete, and search arena comparison records.
+keywords: ["admin", "comparisons", "arena", "CRUD"]
+---
+
+## GET /api/admin/comparisons
+
+List all comparisons with pagination.
+
+### Query parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | integer | 1 | Page number |
+| `limit` | integer | 50 | Items per page (max 500) |
+
+### Response
+
+```json filename="Response"
+{
+  "success": true,
+  "data": [
+    {
+      "comparison_id": "c1d2e3f4-...",
+      "user_id": "a1b2c3d4-...",
+      "prompt_text": "Explain quantum computing",
+      "model1_id": "m1-uuid",
+      "model2_id": "m2-uuid",
+      "model1_response": "Quantum computing uses...",
+      "model2_response": "Quantum computers leverage...",
+      "model1_time_ms": 1200,
+      "model2_time_ms": 980,
+      "created_at": "2025-01-15T10:00:00Z"
+    }
+  ],
+  "count": 50,
+  "total": 12345,
+  "page": 1,
+  "limit": 50
+}
+```
+
+## GET /api/admin/comparisons/{id}
+
+Get a single comparison by UUID.
+
+## GET /api/admin/comparisons/user/{userId}
+
+Get all comparisons for a specific user.
+
+## DELETE /api/admin/comparisons/{id}
+
+Delete a comparison by UUID.
+
+## DELETE /api/admin/comparisons/user/{userId}
+
+Delete all comparisons for a specific user.
+
+## GET /api/admin/comparisons/search
+
+Search comparisons by prompt text.
+
+### Query parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `prompt` | string | Partial prompt text match (case-insensitive) |
+| `page` | integer | Page number |
+| `limit` | integer | Items per page |

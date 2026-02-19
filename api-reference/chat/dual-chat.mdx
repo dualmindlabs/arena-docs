@@ -1,0 +1,490 @@
+---
+title: "POST /api/arena/dualchat"
+api: "POST /api/arena/dualchat"
+description: "Send a prompt to two AI models simultaneously for blind comparison. Supports random, topper, and manual selection modes."
+keywords: ["dual chat", "arena", "comparison", "blind test", "model selection", "API"]
+---
+
+# Dual Chat (Arena Mode) <Badge>Stable</Badge>
+
+Send a prompt to two AI models simultaneously. Models respond in parallel, and responses are returned anonymized for blind comparison.
+
+## Authentication <Badge variant="warning">Required</Badge>
+
+**JWT Claims Extraction** (Lines 338-350):
+```csharp
+sub | ClaimTypes.NameIdentifier → User UUID (required)
+email | ClaimTypes.Email → User email
+full_name | name | ClaimTypes.Name → Display name
+```
+
+## Request Body
+
+<ParamField body="prompt" type="string" required>
+  User message sent to both models
+
+  **Validation** (Line 200):
+  ```csharp
+  if (request == null || string.IsNullOrWhiteSpace(request.Prompt))
+      return BadRequest("INVALID_REQUEST");
+  ```
+</ParamField>
+
+<ParamField body="selectionMode" type="string">
+  Model selection strategy
+
+  **Values**:
+  - `"random"`: Two different random active models (Lines 246-249)
+  - `"topper"`: Top-performing model + random model (Lines 237-242)
+  - Default if manual models provided: `"manual"` (Line 233)
+
+  **Selection Logic**:
+  ```csharp
+  if (request.SelectionMode == "topper") {
+      var pair = await _leaderboardModelSelector.GetTopperAndRandomModelAsync();
+  } else {
+      var pair = await _modelSelector.GetTwoRandomModelsAsync();
+  }
+  ```
+</ParamField>
+
+<ParamField body="model1" type="string">
+  First model name (manual selection)
+
+  **Validation** (Lines 218-229):
+  ```csharp
+  if (manual && (string.IsNullOrWhiteSpace(request.Model1) || 
+                  string.IsNullOrWhiteSpace(request.Model2))) {
+      return BadRequest("Both model1 and model2 are required");
+  }
+  ```
+  
+  **Required**: Only if `model2` also provided
+</ParamField>
+
+<ParamField body="model2" type="string">
+  Second model name (manual selection)
+
+  **Required**: Only if `model1` also provided
+</ParamField>
+
+<ParamField body="system" type="string">
+  System prompt applied to both models
+
+  **Default**: Implementation-defined and not guaranteed (provider-specific)
+</ParamField>
+
+<ParamField body="maxTokens" type="integer">
+  Maximum tokens per model response
+
+  **Applies**: To both models independently
+</ParamField>
+
+<ParamField body="temperature" type="number">
+  Sampling temperature (0.0-2.0) for both models
+
+  **Default**: Not specified by API contract (provider-defined)
+</ParamField>
+
+<ParamField body="sessionId" type="string">
+  Session tracking identifier
+
+  **Auto-generation** (Line 197):
+  ```csharp
+  var sessionId = Guid.NewGuid();
+  ```
+</ParamField>
+
+<ParamField body="threadId" type="string">
+  Thread UUID to associate comparison with conversation
+
+  **Validation** (Lines 354-360):
+  ```csharp
+  if (!string.IsNullOrEmpty(request.ThreadId)) {
+      if (Guid.TryParse(request.ThreadId, out Guid threadIdGuid)) {
+          await _threadMessagesService.LogDualAsync(...);
+      }
+  }
+  ```
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  Always `true` on success (Line 392)
+</ResponseField>
+
+<ResponseField name="agent1" type="object">
+  First model response (same structure as single chat)
+  
+  <Expandable title="properties">
+    <ResponseField name="object" type="string">
+      `"ai.response"`
+    </ResponseField>
+    <ResponseField name="output" type="object">
+      Content output structure
+    </ResponseField>
+    <ResponseField name="message" type="string">
+      AI response text
+    </ResponseField>
+    <ResponseField name="model" type="object">
+      Model metadata (name, displayName, provider)
+    </ResponseField>
+    <ResponseField name="usage" type="object">
+      Token usage statistics
+    </ResponseField>
+    <ResponseField name="responseTimeMs" type="integer">
+      Model 1 inference time
+    </ResponseField>
+    <ResponseField name="timestamp" type="string">
+      ISO8601 timestamp
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="agent2" type="object">
+  Second model response (same structure as agent1)
+</ResponseField>
+
+<ResponseField name="comparisonId" type="string">
+  UUID identifying this comparison (Line 198, 395)
+
+  **Used for**: Voting via `/api/arena/model-vote`
+</ResponseField>
+
+<ResponseField name="arena" type="object">
+  <Expandable title="properties">
+    <ResponseField name="comparison" type="object">
+      <Expandable title="properties">
+        <ResponseField name="winnerByLength" type="string">
+          `"agent1"`, `"agent2"`, or `"tie"` (Lines 369-372)
+          
+          **Logic**:
+          ```csharp
+          if (msg1Len > msg2Len) return "agent1";
+          else if (msg2Len > msg1Len) return "agent2";
+          else return "tie";
+          ```
+        </ResponseField>
+        <ResponseField name="winnerByTokens" type="string">
+          `"agent1"`, `"agent2"`, or `"tie"` (Lines 374-377)
+        </ResponseField>
+        <ResponseField name="verdict" type="string">
+          Human-readable comparison summary (Lines 379-388)
+          
+          **Examples**:
+          - `"Both agents produced similar length and token usage."`
+          - `"Agent 1 produced the longer, more token-heavy answer."`
+          - `"Agents traded wins on length vs. tokens; review both answers manually."`
+        </ResponseField>
+        <ResponseField name="userWinner" type="string">
+          Always `null` (Line 403, vote not submitted yet)
+        </ResponseField>
+        <ResponseField name="agent1MessageLength" type="integer">
+          Character count of agent1 response (Line 404)
+        </ResponseField>
+        <ResponseField name="agent2MessageLength" type="integer">
+          Character count of agent2 response (Line 405)
+        </ResponseField>
+        <ResponseField name="agent1Tokens" type="integer">
+          Total tokens for agent1 (Line 406)
+        </ResponseField>
+        <ResponseField name="agent2Tokens" type="integer">
+          Total tokens for agent2 (Line 407)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="models" type="object">
+      <Expandable title="properties">
+        <ResponseField name="agent1" type="string">
+          Model name for agent1 (Line 411)
+        </ResponseField>
+        <ResponseField name="agent2" type="string">
+          Model name for agent2 (Line 412)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="timestamp" type="string">
+  ISO8601 UTC timestamp (Line 415)
+</ResponseField>
+
+<ResponseField name="totalResponseTimeMs" type="integer">
+  Total request duration (Lines 265, 416)
+  
+  **Note**: Due to parallel execution, approximately equal to slowest model time
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST 'http://localhost:5079/api/arena/dualchat' \
+  -H 'Authorization: Bearer YOUR_JWT_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "prompt": "Write a haiku about programming",
+    "selectionMode": "random",
+    "temperature": 0.9
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5079/api/arena/dualchat', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${jwt}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    prompt: 'Write a haiku about programming',
+    selectionMode: 'random',
+    temperature: 0.9
+  })
+});
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'http://localhost:5079/api/arena/dualchat',
+    headers={
+        'Authorization': f'Bearer {jwt}',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'prompt': 'Write a haiku about programming',
+        'selectionMode': 'random',
+        'temperature': 0.9
+    }
+)
+
+result = response.json()
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 Success
+{
+  "success": true,
+  "agent1": {
+    "object": "ai.response",
+    "message": "Code flows like water\nThrough circuits of logic pure\nBugs hide in shadows",
+    "model": {
+      "name": "llama-3.3-70b-versatile",
+      "displayName": "Llama 3.3 70B",
+      "provider": "groq"
+    },
+    "usage": {
+      "promptTokens": 12,
+      "completionTokens": 25,
+      "totalTokens": 37
+    },
+    "responseTimeMs": 823,
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  },
+  "agent2": {
+    "object": "ai.response",
+    "message": "Silent keystrokes fall\nAlgorithms come alive\nCreation awaits",
+    "model": {
+      "name": "mixtral-8x7b-32768",
+      "displayName": "Mixtral 8x7B",
+      "provider": "groq"
+    },
+    "usage": {
+      "promptTokens": 12,
+      "completionTokens": 22,
+      "totalTokens": 34
+    },
+    "responseTimeMs": 1102,
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  },
+  "comparisonId": "c7d3a4b2-9e1f-4c5d-8b3a-7f6e9d2c1a0b",
+  "arena": {
+    "comparison": {
+      "winnerByLength": "agent1",
+      "winnerByTokens": "agent1",
+      "verdict": "Agent 1 produced the longer, more token-heavy answer.",
+      "userWinner": null,
+      "agent1MessageLength": 68,
+      "agent2MessageLength": 55,
+      "agent1Tokens": 37,
+      "agent2Tokens": 34
+    },
+    "models": {
+      "agent1": "llama-3.3-70b-versatile",
+      "agent2": "mixtral-8x7b-32768"
+    }
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "totalResponseTimeMs": 1102
+}
+```
+
+```json 400 INVALID_REQUEST (Missing Prompt)
+{
+  "object": "ai.error",
+  "code": "INVALID_REQUEST",
+  "message": "Prompt is required and cannot be empty",
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+```
+
+```json 400 INVALID_REQUEST (Manual Mode)
+{
+  "object": "ai.error",
+  "code": "INVALID_REQUEST",
+  "message": "Both model1 and model2 are required for side-by-side mode",
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+```
+
+```json 500 API_ERROR
+{
+  "object": "ai.error",
+  "code": "API_ERROR",
+  "message": "Both primary provider 'groq' and Groq fallback failed",
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+```
+</ResponseExample>
+
+## Side Effects
+
+**Database Mutations** (Lines 333-360):
+
+1. **message_logs** table (Lines 333-334):
+   ```csharp
+   await _messageLogger.LogMessageAsync(sessionId, finalModel1, "agent1", request, response1);
+   await _messageLogger.LogMessageAsync(sessionId, finalModel2, "agent2", request, response2);
+   ```
+   - Two separate log entries (one per model)
+
+2. **users** table UPSERT (Lines 336-350):
+   ```csharp
+   await _userSyncService.EnsureUserExistsAsync(userId, email, name);
+   ```
+   - Executes on every authenticated request
+   - Idempotent operation
+
+3. **comparisons** table (Line 352):
+   ```csharp
+   await _comparisonLogger.LogComparisonAsync(comparisonId, request, response1, response2, userId);
+   ```
+   - Stores comparison data for voting/leaderboard
+   - Links to both models
+
+4. **thread_messages** table (conditional, Lines 354-360):
+   ```csharp
+   if (!string.IsNullOrEmpty(request.ThreadId)) {
+       await _threadMessagesService.LogDualAsync(threadIdGuid, request.Prompt, 
+           finalModel1, finalModel2, response1, response2, comparisonId);
+   }
+   ```
+   - Only if `threadId` provided and valid GUID
+   - Links message to comparison via `comparisonId`
+
+## Behavior
+
+**Parallel Execution** (Lines 254-257):
+```csharp
+var task1 = ExecuteWithFallbackAsync(model1, ...);
+var task2 = ExecuteWithFallbackAsync(model2, ...);
+
+await Task.WhenAll(task1, task2);
+```
+
+**Independence**:
+- Each model has independent 45s timeout
+- Each model has independent fallback chain
+- One model failure doesn't block the other
+
+**Response Time** (Line 265):
+```csharp
+var responseTime = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
+```
+- Measures total elapsed time
+- Due to parallel execution: `max(model1_time, model2_time) + overhead`
+
+**Selection Modes** (Lines 213-251):
+
+| Mode | Logic | Line Range |
+|------|-------|-----------|
+| Manual | `!string.IsNullOrWhiteSpace(request.Model1 \|\| Model2)` | 218-233 |
+| Topper | `request.SelectionMode == "topper"` | 237-242 |
+| Random | Default | 244-250 |
+
+**Topper Mode Implementation** (Lines 239-241):
+```csharp
+var pair = await _leaderboardModelSelector.GetTopperAndRandomModelAsync();
+```
+- Queries `model_votes` table for highest win rate
+- Pairs top model with random model
+- Ensures diverse comparison
+
+**Arena Comparison Logic** (Lines 362-388):
+```csharp
+var msg1Len = (response1.Message ?? string.Empty).Length;
+var msg2Len = (response2.Message ?? string.Empty).Length;
+var tokens1 = response1.Usage?.TotalTokens ?? 0;
+var tokens2 = response2.Usage?.TotalTokens ?? 0;
+
+// Determine winners by length and tokens
+// Generate verdict based on combination
+```
+
+## Error Conditions
+
+| Code | HTTP | Cause | Controller Line |
+|------|------|-------|----------------|
+| `INVALID_REQUEST` | 400 | Prompt null/whitespace | 202-208 |
+| `INVALID_REQUEST` | 400 | Manual mode missing model1 or model2 | 222-228 |
+| `API_ERROR` | 500 | Inner exception (provider failure) | 424-430 |
+| `API_ERROR` | 500 | Outer exception (unexpected error) | 436-442 |
+
+**Nested Exception Handling** (Lines 421-443):
+```csharp
+try {
+    // Dual chat logic
+} catch (Exception ex) {
+    _logger.LogError(ex, "DualChat inner error");
+    return 500 API_ERROR;
+}
+} catch (Exception outerEx) {
+    _logger.LogError(outerEx, "DualChat outer error");
+    return 500 API_ERROR;
+}
+```
+
+**Partial Execution**: If one model succeeds and one fails, both tasks still complete. Full dual response returned if both succeed. If either fails, exception bubbles to error handler.
+
+## Edge Cases
+
+1. **Same model selected twice**: Not prevented by code, allowed in random selection
+2. **Topper mode with insufficient vote data**: Behavior not enforced by server contract (assumed fallback to random selection)
+3. **Invalid threadId GUID**: Silently skipped, no error (Line 356 guard)
+4. **Model fallback changes model names**: `finalModel1` and `finalModel2` may differ from requested models
+5. **Null usage stats**: Handled with null-coalescing (Lines 366-367)
+
+## Comparison ID Usage
+
+**Generated at request start** (Line 198):
+```csharp
+var comparisonId = Guid.NewGuid();
+```
+
+**Used for**:
+1. Logging comparison to `comparisons` table (Line 352)
+2. Linking to thread message in `thread_messages` table (Line 358)
+3. Returned in response for voting (Line 395)
+4. Voting endpoint requires this ID: `POST /api/arena/model-vote`
+
+## Rate Limits
+
+No explicit rate limiting in controller. Provider-level limits apply:
+- Groq free tier: 30 req/min, 14,400 tokens/min
+- Dual chat consumes 2× tokens (both models)
+- **Effective limit**: ~15 dual-chat requests/min on free tier

@@ -1,0 +1,203 @@
+---
+title: "API Reference"
+sidebarTitle: "Introduction"
+description: "Complete API documentation for DualMind Lab — blind AI model comparison arena with interactive playground."
+keywords: ["API", "REST", "endpoints", "DualMind", "reference", "OpenAPI"]
+---
+
+# DualMind Lab API
+
+The DualMind Lab API provides programmatic access to the blind AI model comparison arena. Send prompts, manage threads, vote on responses, and access model statistics.
+
+<Info>
+**Base URL**: `https://api.dualmindlab.tech`
+
+All endpoints are prefixed with `/api/`.
+</Info>
+
+## Authentication
+
+Most endpoints require a <Tooltip tip="JSON Web Token — cryptographically signed authentication token from Supabase Auth">JWT token</Tooltip> in the `Authorization` header:
+
+```bash filename="Authorization Header"
+Authorization: Bearer <your_jwt_token>
+```
+
+<Warning>
+Tokens are issued by Supabase Auth and expire after 1 hour. Use `supabase.auth.refreshSession()` to renew.
+</Warning>
+
+## Quick start
+
+<Steps>
+  <Step title="Get your JWT token">
+    Sign in via the DualMind frontend or use Supabase Auth directly:
+
+    <Tabs>
+      <Tab title="JavaScript">
+        ```javascript filename="auth.js"
+        import { createClient } from '@supabase/supabase-js';
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const { data } = await supabase.auth.signInWithPassword({
+          email: 'user@example.com',
+          password: 'your-password'
+        });
+        const token = data.session.access_token;
+        ```
+      </Tab>
+      <Tab title="cURL">
+        ```bash filename="Terminal"
+        # Use the token from your Supabase Auth session
+        export TOKEN="your_jwt_token_here"
+        ```
+      </Tab>
+      <Tab title="Python">
+        ```python filename="auth.py"
+        from supabase import create_client
+
+        supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+        response = supabase.auth.sign_in_with_password({
+            "email": "user@example.com",
+            "password": "your-password"
+        })
+        token = response.session.access_token
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Create a thread">
+    ```bash filename="Terminal"
+    curl -X POST https://api.dualmindlab.tech/api/arena/thread/new \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{"title": "My first comparison"}'
+    ```
+  </Step>
+
+  <Step title="Send a message">
+    ```bash filename="Terminal"
+    curl -X POST https://api.dualmindlab.tech/api/arena/send \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "message": "Explain quantum computing in simple terms",
+        "threadId": "your-thread-id"
+      }'
+    ```
+
+    <Check>You'll receive two anonymized model responses for blind comparison.</Check>
+  </Step>
+
+  <Step title="Vote on the best response">
+    ```bash filename="Terminal"
+    curl -X POST https://api.dualmindlab.tech/api/arena/vote \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "comparisonId": "comparison-uuid",
+        "winner": "model_a"
+      }'
+    ```
+  </Step>
+</Steps>
+
+## Endpoint categories
+
+<CardGroup cols={3}>
+  <Card title="Chat & Arena" icon="swords" href="/api-reference/chat/single-chat">
+    Send messages in single or dual (arena) mode with blind model comparison
+  </Card>
+  <Card title="Threads" icon="messages-square" href="/api-reference/threads/list-threads">
+    Create, list, update, share, and delete conversation threads
+  </Card>
+  <Card title="Voting & Stats" icon="trophy" href="/api-reference/voting/submit-vote">
+    Submit votes and retrieve model leaderboard statistics
+  </Card>
+  <Card title="Models & Users" icon="brain" href="/api-reference/models/list-models">
+    List available AI models and sync user profiles
+  </Card>
+  <Card title="Utilities" icon="wrench" href="/api-reference/utilities/health">
+    Health checks, feature flags, and text-to-speech
+  </Card>
+  <Card title="Admin API" icon="shield" href="/api-reference/admin/dashboard">
+    Full CRUD operations for platform management
+  </Card>
+</CardGroup>
+
+## Response format
+
+All API responses use JSON. Successful responses return the data directly. Errors follow a consistent format:
+
+<Tabs>
+  <Tab title="Success">
+    ```json filename="200 OK"
+    {
+      "responses": [
+        {
+          "model": "Model A",
+          "content": "Quantum computing uses qubits...",
+          "latencyMs": 1234
+        },
+        {
+          "model": "Model B",
+          "content": "Think of quantum computing as...",
+          "latencyMs": 987
+        }
+      ],
+      "threadId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "isArena": true
+    }
+    ```
+  </Tab>
+  <Tab title="Error">
+    ```json filename="4xx/5xx Error"
+    {
+      "error": "UNAUTHORIZED",
+      "message": "Invalid or expired token"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Error codes
+
+| HTTP Status | Error Code | Description |
+|-------------|-----------|-------------|
+| `400` | `INVALID_REQUEST` | Missing or invalid request parameters |
+| `401` | `UNAUTHORIZED` | Missing, invalid, or expired JWT token |
+| `403` | `FORBIDDEN` | Insufficient permissions (admin endpoints) |
+| `404` | `NOT_FOUND` | Resource does not exist |
+| `429` | `RATE_LIMITED` | Too many requests |
+| `500` | `API_ERROR` | Internal server or AI provider error |
+
+## Rate limits
+
+<Note>
+Rate limits vary by endpoint and authentication status. Authenticated users receive higher limits than anonymous requests.
+</Note>
+
+| Endpoint Category | Authenticated | Anonymous |
+|-------------------|--------------|-----------|
+| Chat & Arena | 60 req/min | N/A |
+| Threads | 120 req/min | 30 req/min (read-only) |
+| Voting | 30 req/min | N/A |
+| Admin | 120 req/min | N/A |
+
+## Interactive playground
+
+<Tip>
+Every API endpoint page includes an **interactive playground** where you can test requests directly in the browser. Enter your JWT token and try the API without writing any code.
+</Tip>
+
+## SDKs and tools
+
+<CardGroup cols={2}>
+  <Card title="OpenAPI Spec" icon="file-code" href="/api-reference/openapi.json">
+    Download the OpenAPI 3.0 specification for code generation
+  </Card>
+  <Card title="MCP Server" icon="plug" href="/mcp">
+    Connect AI agents to DualMind via Model Context Protocol
+  </Card>
+</CardGroup>

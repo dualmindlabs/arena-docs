@@ -1,0 +1,133 @@
+---
+title: "Roadmap"
+sidebarTitle: "Roadmap"
+description: "Planned features and improvements for DualMind Lab — the blind AI model comparison arena."
+keywords: ["roadmap", "features", "planned", "upcoming", "DualMind"]
+---
+
+# Product Roadmap
+
+A look at what's coming next for DualMind Lab. Features are organized by priority and estimated timeline.
+
+<Info>
+This roadmap is subject to change based on community feedback and development priorities. Have a feature request? [Open an issue on GitHub](https://github.com/HarshBhanushali07).
+</Info>
+
+## In progress
+
+<CardGroup cols={2}>
+  <Card title="UI Revamp" icon="paintbrush">
+    **Priority**: High
+
+    Complete redesign of the user interface with modern aesthetics, improved accessibility, and better mobile responsiveness.
+
+    - New design system with consistent components
+    - Dark/light mode improvements
+    - Mobile-first responsive layout
+    - Status: ~80% complete, launching soon
+  </Card>
+
+  <Card title="ELO Rating System" icon="chart-line">
+    **Priority**: High
+
+    Implement a proper <Tooltip tip="Elo rating system adapted from chess for ranking AI models based on pairwise comparisons">ELO rating</Tooltip> algorithm for model rankings instead of simple win-rate percentages.
+
+    - Bayesian ELO with confidence intervals
+    - Rating decay for inactive models
+    - Historical rating charts
+  </Card>
+</CardGroup>
+
+## Planned — Q2 2026
+
+<Steps>
+  <Step title="Additional AI Providers">
+    Integrate OpenAI, Anthropic, Google Gemini, and Mistral as first-class providers alongside Groq and Bytez.
+
+    | Provider | Models | Status |
+    |----------|--------|--------|
+    | Groq | Llama, Mixtral | Live |
+    | Bytez | Various | Live |
+    | OpenAI | GPT-4o, GPT-4o-mini | Planned |
+    | Anthropic | Claude 3.5 Sonnet | Planned |
+    | Google | Gemini 2.0 | Planned |
+  </Step>
+
+  <Step title="Public API Keys">
+    Allow developers to generate API keys for programmatic access without requiring Supabase Auth session tokens.
+
+    - API key management dashboard
+    - Rate limiting per key
+    - Usage analytics
+  </Step>
+
+  <Step title="Batch Comparisons">
+    Run automated batch comparisons across model pairs with predefined prompt sets for systematic evaluation.
+  </Step>
+
+  <Step title="Export & Analytics">
+    Export comparison data, vote history, and model statistics in CSV/JSON formats for external analysis.
+  </Step>
+</Steps>
+
+## Planned — Q3 2026
+
+<Steps>
+  <Step title="Custom Evaluation Criteria">
+    Define custom rubrics for model evaluation beyond simple preference voting — accuracy, creativity, helpfulness, safety.
+  </Step>
+
+  <Step title="Team Workspaces">
+    Collaborative workspaces where teams can run comparisons, share results, and build consensus on model selection.
+  </Step>
+
+  <Step title="Webhook Integrations">
+    Real-time notifications via webhooks when comparisons complete, models are added, or rankings change.
+  </Step>
+
+  <Step title="Plugin System">
+    Extensible plugin architecture for custom providers, evaluation metrics, and UI components.
+  </Step>
+</Steps>
+
+## Completed
+
+<AccordionGroup>
+  <Accordion title="v2.0 — Blind Comparison Arena">
+    - Arena battle mode with anonymous model responses
+    - Random, topper, and manual model selection
+    - Real-time SSE streaming
+    - Thread management with public sharing
+    - Admin dashboard with full CRUD
+    - Supabase Auth integration
+  </Accordion>
+
+  <Accordion title="v1.5 — Groq Provider Support">
+    - Added Groq as primary AI provider
+    - Llama 3.3 70B and Mixtral 8x7B models
+    - Model status monitoring
+    - Provider API key rotation
+  </Accordion>
+
+  <Accordion title="v1.0 — Initial Release">
+    - Single chat mode
+    - Basic thread management
+    - User authentication
+    - PostgreSQL database schema
+  </Accordion>
+</AccordionGroup>
+
+## Request a feature
+
+<Tip>
+We prioritize features based on community demand. If you'd like to see something on this roadmap, open a GitHub issue or contribute directly.
+</Tip>
+
+<CardGroup cols={2}>
+  <Card title="Feature Request" icon="lightbulb" href="https://github.com/HarshBhanushali07">
+    Suggest a new feature on GitHub
+  </Card>
+  <Card title="Contributing" icon="git-pull-request" href="/development/contributing">
+    Contribute code directly
+  </Card>
+</CardGroup>

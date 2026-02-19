@@ -1,0 +1,160 @@
+---
+title: MCP Server Integration
+description: DualMind Lab Model Context Protocol (MCP) server for AI agent integration.
+keywords: ["MCP", "Model Context Protocol", "AI agents", "Claude", "Cursor", "IDE integration"]
+---
+
+# MCP Server
+
+DualMind Lab provides a **Model Context Protocol (MCP)** server that allows AI agents and IDEs to interact with the platform's API, database, and documentation directly.
+
+## What is MCP?
+
+The [Model Context Protocol](https://modelcontextprotocol.io) (MCP) is an open standard that enables AI systems to connect with external data sources and tools. It allows AI agents like Claude, Cursor, and others to:
+
+- Query your API documentation
+- Access database schemas
+- Execute API requests
+- Retrieve real-time data
+
+## Available Resources
+
+<CardGroup cols={3}>
+  <Card title="API Documentation" icon="file-code" href="/api-reference/openapi.json">
+    Complete OpenAPI specification for all endpoints
+  </Card>
+  <Card title="Skills Context" icon="brain" href="/skills.md">
+    AI-friendly project overview and architecture
+  </Card>
+  <Card title="LLMs Context" icon="robot" href="/llms.txt">
+    Training context for LLMs
+  </Card>
+</CardGroup>
+
+## Resources for AI Agents
+
+### skills.md
+
+Located at `/skills.md`, this file provides:
+- Project overview and architecture
+- API endpoint summaries
+- Database schema overview
+- Common development tasks
+- Environment variables reference
+
+### llms.txt
+
+Located at `/llms.txt`, this file provides:
+- Concise tech stack summary
+- API base URL and authentication
+- Key endpoints list
+- Database schema in text format
+- Documentation file structure
+
+## IDE Integration
+
+### Cursor IDE
+
+Add DualMind Lab context to Cursor:
+
+1. Open **Cursor Settings** → **AI** → **Context**
+2. Add the following URLs as context sources:
+   - `https://docs.dualmindlab.tech/skills.md`
+   - `https://docs.dualmindlab.tech/llms.txt`
+   - `https://docs.dualmindlab.tech/api-reference/openapi.json`
+
+### Claude Desktop
+
+Configure Claude Desktop to use DualMind Lab MCP:
+
+```json
+{
+  "mcpServers": {
+    "dualmind": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-http",
+        "--url",
+        "https://docs.dualmindlab.tech"
+      ]
+    }
+  }
+}
+```
+
+### Other AI Agents
+
+Any MCP-compatible agent can connect using:
+
+- **Base URL**: `https://docs.dualmindlab.tech`
+- **OpenAPI Spec**: `/api-reference/openapi.json`
+- **Skills Context**: `/skills.md`
+- **LLMs Context**: `/llms.txt`
+
+## API Playground
+
+Test API endpoints directly from the documentation:
+
+<Card title="Interactive API Playground" icon="play" href="/api-reference/chat/single-chat">
+  Try API requests with built-in authentication and parameter editing
+</Card>
+
+## Key Features
+
+<AccordionGroup>
+  <Accordion title="Real-time Schema Access">
+    AI agents can query the latest database schema and API specifications
+    without manual updates.
+  </Accordion>
+  
+  <Accordion title="Contextual Code Generation">
+    With access to skills.md and llms.txt, AI agents generate code that
+    matches your architecture and conventions.
+  </Accordion>
+  
+  <Accordion title="Auto-updating Documentation">
+    As the API evolves, the OpenAPI spec at `/api-reference/openapi.json`
+    stays synchronized with the backend.
+  </Accordion>
+  
+  <Accordion title="Direct API Testing">
+    Use the interactive playground to test endpoints with live responses.
+  </Accordion>
+</AccordionGroup>
+
+## Quick Commands for AI Agents
+
+When working with DualMind Lab, AI agents can reference:
+
+| Command | Resource | Description |
+|---------|----------|-------------|
+| `Read skills.md` | Project context | Full architecture and API overview |
+| `Read llms.txt` | LLM context | Concise reference for code generation |
+| `GET /api-reference/openapi.json` | API spec | Complete OpenAPI 3.0 specification |
+| `Query database schema` | Schema docs | PostgreSQL table definitions |
+
+## Next Steps
+
+<Steps>
+  <Step title="Configure Your IDE">
+    Add skills.md and llms.txt to your AI agent's context sources
+  </Step>
+  <Step title="Explore the API">
+    Use the interactive playground at `/api-reference/chat/single-chat`
+  </Step>
+  <Step title="Generate Code">
+    Ask your AI agent to generate API clients using the OpenAPI spec
+  </Step>
+</Steps>
+
+## Support
+
+<CardGroup cols={2}>
+  <Card title="GitHub" icon="github" href="https://github.com/HarshBhanushali07">
+    Report issues or request features
+  </Card>
+  <Card title="Live Demo" icon="play" href="https://arena.dualmindlab.tech">
+    Try the platform
+  </Card>
+</CardGroup>

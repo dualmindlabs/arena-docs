@@ -1,0 +1,235 @@
+---
+title: "PATCH /api/threads/{id}"
+api: "PATCH /api/threads/{id}"
+description: "Update thread title"
+---
+
+## Authentication
+
+**Required**: JWT Bearer token
+
+**JWT Claims Extraction** (Lines 277-281):
+```csharp
+sub | ClaimTypes.NameIdentifier → User UUID (required)
+```
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  Thread UUID
+
+  **Format**: Valid GUID
+  
+  **Validation**: Route constraint `:guid` (Line 270)
+</ParamField>
+
+## Request Body
+
+<ParamField body="title" type="string" required>
+  New thread title
+
+  **Validation** (Lines 305-313):
+  ```csharp
+  if (string.IsNullOrWhiteSpace(request?.Title)) {
+      return BadRequest("Title is required");
+  }
+  ```
+  
+  **Constraints**:
+  - MUST NOT be null
+  - MUST NOT be empty string
+  - MUST NOT be whitespace-only
+  
+  **Max Length**: Not enforced by API contract (database column limit may apply)
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'http://localhost:5079/api/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479' \
+  -H 'Authorization: Bearer YOUR_JWT_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{"title": "Updated Thread Title"}'
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'http://localhost:5079/api/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479',
+  {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${jwt}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      title: 'Updated Thread Title'
+    })
+  }
+);
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.patch(
+    'http://localhost:5079/api/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479',
+    headers={
+        'Authorization': f'Bearer {jwt}',
+        'Content-Type': 'application/json'
+    },
+    json={'title': 'Updated Thread Title'}
+)
+
+result = response.json()
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 Success
+{
+  "success": true,
+  "message": "Thread updated successfully"
+}
+```
+
+```json 400 INVALID_REQUEST
+{
+  "success": false,
+  "error": "Title is required",
+  "code": "INVALID_REQUEST"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "User ID claim missing"
+}
+```
+
+```json 404 NOT_FOUND
+{
+  "success": false,
+  "error": "Thread not found",
+  "code": "NOT_FOUND"
+}
+```
+
+```json 403 FORBIDDEN
+{
+  "success": false,
+  "error": "You do not have permission to update this thread",
+  "code": "FORBIDDEN"
+}
+```
+
+```json 500 THREAD_UPDATE_ERROR
+{
+  "success": false,
+  "error": "Database update failed",
+  "code": "THREAD_UPDATE_ERROR"
+}
+```
+</ResponseExample>
+
+## Authorization
+
+**Ownership Verification** (Lines 289-303):
+```csharp
+var thread = await _threadsService.GetThreadAsync(threadId);
+if (thread == null) {
+    return NotFound("Thread not found");
+}
+
+if (thread.UserId != userId) {
+    return 403 FORBIDDEN;
+}
+```
+
+**Permission Rules**:
+- ONLY thread owner can update title
+- No delegation or sharing of update rights
+- Admins NOT exempted (no admin check in code)
+
+## Side Effects
+
+**Database Mutations** (Line 315):
+```csharp
+await _threadsService.UpdateThreadAsync(threadId, request.Title);
+```
+
+**Tables Written**:
+- UPDATE `threads` SET `title = {request.Title}`, `updated_at = NOW()` WHERE `thread_id = {threadId}`
+
+**Cascade Effects**: None
+- Messages not affected
+- Thread visibility not changed
+- Ownership not changed
+
+## Permissions
+
+**Who Can Modify**:
+- Thread owner only
+
+**Who Cannot Modify**:
+- Other authenticated users
+- Unauthenticated users
+- Public thread viewers (even if public_sharing enabled)
+
+## Edge Cases
+
+1. **Thread doesn't exist**: 404 (Lines 290-293)
+2. **User is not owner**: 403 (Lines 295-303)
+3. **Title is null**: 400 (Lines 305-313)
+4. **Title is empty**: 400 (Lines 305-313)
+5. **Title is whitespace-only**: 400 (Lines 305-313)
+6. **Title same as current**: Update proceeds (no change detection)
+7. **Very long title**: Not validated by controller (database may truncate or error)
+
+## Error Conditions
+
+| Code | HTTP | Cause | Controller Line |
+|------|------|-------|----------------|
+| N/A | 401 | JWT missing or invalid | Middleware |
+| N/A | 401 | User ID claim missing | 283-286 |
+| `INVALID_REQUEST` | 400 | Title null/empty/whitespace | 305-313 |
+| `NOT_FOUND` | 404 | Thread doesn't exist | 290-293 |
+| `FORBIDDEN` | 403 | Not thread owner | 295-303 |
+| `THREAD_UPDATE_ERROR` | 500 | Service exception | 323-331 |
+
+**Exception Handling** (Lines 323-331):
+```csharp
+catch (Exception ex) {
+    return StatusCode(500, new { error = ex.Message, code = "THREAD_UPDATE_ERROR" });
+}
+```
+
+## Behavioral Guarantees
+
+**Atomicity**: Single UPDATE query (atomic)
+
+**Idempotency**: NOT idempotent
+- `updated_at` timestamp changes on every call
+- Even if title unchanged
+
+**Concurrency**: No locking
+- Race condition possible if two updates concurrent
+- Last write wins (database-dependent)
+
+## Validation Order
+
+1. User ID from JWT (401 if missing)
+2. Thread existence (404 if not found)
+3. Ownership (403 if not owner)
+4. Title validation (400 if invalid)
+5. Update execution (500 if fails)
+
+**Note**: Title validated AFTER ownership check (Lines 305-315)
+
+## Database Schema Impact
+
+**Column Updated**: `threads.title`
+
+**Timestamp Updated**: `threads.updated_at` (implicit, service-level)
+
+**No Triggers**: Controller doesn't document any database triggers

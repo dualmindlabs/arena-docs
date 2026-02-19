@@ -1,0 +1,285 @@
+---
+title: "POST /api/users/sync"
+api: "POST /api/users/sync"
+description: "Synchronize user data to database"
+---
+
+## Authentication
+
+**Not Required** (No `[Authorize]` attribute)
+
+Public endpoint for user synchronization
+
+## Request Body
+
+<ParamField body="id" type="string" required>
+  User UUID
+
+  **Validation** (Lines 25-28):
+  ```csharp
+  if (!Guid.TryParse(request.Id, out Guid userGuid)) {
+      return BadRequest("Invalid user ID format");
+  }
+  ```
+  
+  **Constraints**:
+  - MUST be valid GUID format
+  - MUST NOT be empty or null
+</ParamField>
+
+<ParamField body="email" type="string">
+  User email address
+
+  **Validation**: None in controller
+  
+  **Nullable**: Allowed (passed to service as-is, Line 30)
+</ParamField>
+
+<ParamField body="name" type="string">
+  User display name
+
+  **Validation**: None in controller
+  
+  **Nullable**: Yes (Line 51)
+</ParamField>
+
+<ParamField body="phone" type="string">
+  User phone number
+
+  **Usage**: NOT USED (Line 50)
+  
+  **Note**: Accepted in request but not passed to service
+</ParamField>
+
+<ParamField body="avatarUrl" type="string">
+  User avatar image URL
+
+  **Usage**: NOT USED (Line 52)
+  
+  **Note**: Accepted in request but not passed to service
+</ParamField>
+
+<ParamField body="provider" type="string">
+  Authentication provider name
+
+  **Usage**: NOT USED (Line 53)
+  
+  **Note**: Accepted in request but not passed to service
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST 'http://localhost:5079/api/users/sync' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "email": "user@example.com",
+    "name": "John Doe"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5079/api/users/sync', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+    email: 'user@example.com',
+    name: 'John Doe'
+  })
+});
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'http://localhost:5079/api/users/sync',
+    json={
+        'id': 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        'email': 'user@example.com',
+        'name': 'John Doe'
+    }
+)
+
+result = response.json()
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 Success
+{
+  "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "email": "user@example.com",
+  "synced": true
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "Invalid user ID format"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Failed to sync user"
+}
+```
+</ResponseExample>
+
+## Side Effects
+
+**Database Mutations** (Line 30):
+```csharp
+await _userSyncService.EnsureUserExistsAsync(userGuid, request.Email, request.Name);
+```
+
+**Tables Written**:
+- `users` table (UPSERT operation)
+
+**UPSERT Logic** (service-level):
+```sql
+INSERT INTO users (id, email, name, updated_at)
+VALUES ($1, $2, $3, NOW())
+ON CONFLICT (id) DO UPDATE
+SET email = EXCLUDED.email,
+    name = EXCLUDED.name,
+    updated_at = NOW()
+```
+
+**Fields Synced**:
+- `id`: User UUID (primary key)
+- `email`: User email (from request)
+- `name`: User display name (from request)
+- `updated_at`: Current timestamp
+
+**Fields NOT Synced**: phone, avatarUrl, provider (not passed to service, Lines 50-53)
+
+## Authorization
+
+**No Authentication**: Endpoint publicly accessible
+
+**Security Risk**: Anyone can sync user data
+- No ownership verification
+- No rate limiting documented
+- Potential for abuse
+
+**Intended Use**: Called by authentication system after user signup/login
+
+## Permissions
+
+**Who Can Sync**:
+- Anyone (no authentication required)
+
+**What Can Be Synced**:
+- User ID, email, name only
+- phone, avatarUrl, provider silently ignored
+
+## Edge Cases
+
+1. **Invalid GUID**: 400 error (Lines 25-28)
+2. **Null email**: Allowed, passed to service (Line 30)
+3. **Null name**: Allowed, passed to service (Line 30)
+4. **Empty string email**: Allowed (no validation)
+5. **Empty string name**: Allowed (no validation)
+6. **User already exists**: Updated (UPSERT operation)
+7. **User doesn't exist**: Created (UPSERT operation)
+8. **Concurrent syncs**: Last write wins (no locking documented)
+
+## Error Conditions
+
+| Code | HTTP | Cause | Controller Line |
+|------|------|-------|----------------|
+| N/A | 400 | Invalid GUID format | 25-28 |
+| N/A | 500 | Service exception | 38-42 |
+
+**Exception Handling** (Lines 38-42):
+```csharp
+catch (Exception ex) {
+    // Log error but don't expose details
+    return StatusCode(500, new { error = "Failed to sync user" });
+}
+```
+
+**Error Message**: Generic "Failed to sync user"
+- Exception details NOT exposed (unlike other endpoints)
+- Logged internally (Line 40 comment)
+
+## Behavioral Guarantees
+
+**Idempotency**: YES
+- Multiple calls with same data have same effect
+- UPSERT operation ensures idempotency
+- Safe to retry
+
+**Atomicity**: Single UPSERT query (atomic)
+
+**Data Overwrite**: Always overwrites email and name
+- No merge logic
+- Previous values lost
+
+## Validation Rules
+
+**Controller-Level Validation**:
+- ✅ ID format (GUID)
+- ❌ Email format (not validated)
+- ❌ Name length (not validated)
+- ❌ Required fields (only ID required)
+
+**Service-Level Validation**: Not enforced by server contract
+
+## Response Format
+
+**Success Response** (Lines 32-36):
+- Echoes `id` and `email` from request
+- Adds `synced: true` field
+- `name` NOT echoed in response
+
+**Failure Response** (Line 41):
+- Generic error message
+- No details exposed
+
+## Use Cases
+
+**Authentication Integration**:
+- Called after Supabase Auth signup
+- Called after JWT login
+- Ensures user exists in application database
+
+**User Creation**:
+- Creates user row before creating threads
+- Required for foreign key constraints
+
+**User Updates**:
+- Updates email/name if changed in auth system
+
+## Security Implications
+
+**Public Endpoint**:
+- No authentication required
+- Potential for data pollution
+- Could be rate-limited at infrastructure level
+
+**Data Exposure**:
+- Email addresses can be synced by anyone knowing user ID
+
+**Intended Design**: Trust authentication system to call this endpoint
+- NOT designed for direct client calls
+- Should be called by backend after auth verification
+
+## Unused Fields
+
+**Accepted but Ignored** (Lines 50-53):
+- `phone`: Defined in request model, not used
+- `avatarUrl`: Defined in request model, not used
+- `provider`: Defined in request model, not used
+
+**Reason**: Request model may be shared with other services
+- Controller only uses id, email, name
+
+**Behavior**: Silently ignored, no error

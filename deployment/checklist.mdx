@@ -1,0 +1,225 @@
+---
+title: "Production Deployment Checklist"
+sidebarTitle: "Checklist"
+description: "Step-by-step checklist for deploying DualMind Lab to production — verify every component before going live."
+keywords: ["deployment", "checklist", "production", "launch", "verification"]
+---
+
+# Deployment Checklist
+
+Use this checklist before every production deployment to ensure nothing is missed.
+
+<Warning>
+Do not skip steps. Each item addresses a real failure mode encountered during previous deployments.
+</Warning>
+
+## Pre-deployment
+
+<Steps>
+  <Step title="Environment variables configured">
+    Verify all required environment variables are set in production:
+
+    | Variable | Service | Required |
+    |----------|---------|----------|
+    | `SUPABASE_URL` | Backend | Yes |
+    | `SUPABASE_SERVICE_ROLE_KEY` | Backend | Yes |
+    | `JWT_SECRET` | Backend | Yes |
+    | `GROQ_API_KEY` | Backend | Yes |
+    | `ASPNETCORE_ENVIRONMENT` | Backend | Recommended |
+    | `BACKEND_URL` | Admin Panel | Yes |
+
+    <Warning>Never store secrets in code, config files, or Git. Use Azure Application Settings or environment variables.</Warning>
+
+    <Check>All variables set and verified</Check>
+  </Step>
+
+  <Step title="Database schema up to date">
+    Confirm all tables exist in the Supabase `public` schema:
+
+    ```sql filename="Verification Query"
+    SELECT table_name FROM information_schema.tables
+    WHERE table_schema = 'public'
+    ORDER BY table_name;
+    ```
+
+    **Required tables**: `users`, `ai_models`, `threads`, `thread_messages`, `comparisons`, `model_votes`, `providers`, `provider_api_keys`, `system_settings`
+
+    <Check>All 9 tables present</Check>
+  </Step>
+
+  <Step title="Active models configured">
+    Ensure at least 2 active models exist for arena mode:
+
+    ```sql filename="Verification Query"
+    SELECT model_name, display_name, provider_name, status
+    FROM ai_models WHERE status = 'active';
+    ```
+
+    <Check>At least 2 active models available</Check>
+  </Step>
+
+  <Step title="Provider API keys valid">
+    Verify API keys are set and not expired:
+
+    ```sql filename="Verification Query"
+    SELECT p.provider_name, COUNT(k.id) as key_count
+    FROM providers p
+    LEFT JOIN provider_api_keys k ON p.id = k.provider_id AND k.is_active = true
+    GROUP BY p.provider_name;
+    ```
+
+    <Check>Each provider has at least 1 active API key</Check>
+  </Step>
+
+  <Step title="Backend builds successfully">
+    ```bash filename="Terminal"
+    cd DualMind_Back/src/DualMind.API
+    dotnet publish -c Release -o ./publish
+    ```
+
+    <Check>Build completes with no errors</Check>
+  </Step>
+
+  <Step title="Tests pass">
+    ```bash filename="Terminal"
+    cd DualMind_Back
+    dotnet test
+    ```
+
+    <Check>All tests green</Check>
+  </Step>
+</Steps>
+
+## Deployment
+
+<Steps>
+  <Step title="Deploy backend to Azure">
+    <Tabs>
+      <Tab title="CI/CD (Recommended)">
+        Push to `main` branch — GitHub Actions handles the rest:
+
+        ```bash filename="Terminal"
+        git push origin main
+        ```
+
+        Monitor the deployment in GitHub Actions.
+      </Tab>
+      <Tab title="Manual">
+        ```bash filename="Terminal"
+        cd DualMind_Back/src/DualMind.API
+        dotnet publish -c Release -o ./publish
+        # Deploy ./publish to Azure App Service
+        ```
+      </Tab>
+    </Tabs>
+
+    <Check>Backend deployed successfully</Check>
+  </Step>
+
+  <Step title="Deploy frontend to Cloudflare Workers">
+    ```bash filename="Terminal"
+    cd DualMind_UI
+    npx wrangler deploy
+    ```
+
+    <Check>Frontend deployed to Cloudflare</Check>
+  </Step>
+
+  <Step title="Deploy admin panel">
+    ```bash filename="Terminal"
+    cd DualMind_Admin-UI
+    npm run deploy:prod
+    ```
+
+    <Check>Admin panel deployed</Check>
+  </Step>
+</Steps>
+
+## Post-deployment verification
+
+<Steps>
+  <Step title="Health check passes">
+    ```bash filename="Terminal"
+    curl https://api.dualmindlab.tech/health
+    ```
+
+    **Expected**: `{"status":"healthy"}`
+
+    <Check>API is responding</Check>
+  </Step>
+
+  <Step title="Authentication works">
+    ```bash filename="Terminal"
+    curl -H "Authorization: Bearer $TOKEN" \
+      https://api.dualmindlab.tech/api/arena/models
+    ```
+
+    <Check>Returns model list (not 401)</Check>
+  </Step>
+
+  <Step title="Arena mode functional">
+    Send a test message in arena mode and verify two model responses are returned.
+
+    <Check>Dual responses received</Check>
+  </Step>
+
+  <Step title="Streaming works">
+    Test the SSE streaming endpoint:
+
+    ```bash filename="Terminal"
+    curl -N "https://api.dualmindlab.tech/api/arena/stream?prompt=test&model=llama-3.3-70b-versatile" \
+      -H "Authorization: Bearer $TOKEN"
+    ```
+
+    <Check>Tokens stream in real-time</Check>
+  </Step>
+
+  <Step title="Frontend loads correctly">
+    Visit `https://arena.dualmindlab.tech` and verify:
+    - Page loads without console errors
+    - Login flow works
+    - Chat interface renders
+    - Dark mode toggles correctly
+
+    <Check>Frontend fully functional</Check>
+  </Step>
+
+  <Step title="Admin panel accessible">
+    Log in to the admin panel and verify dashboard data loads.
+
+    <Check>Admin panel operational</Check>
+  </Step>
+
+  <Step title="Public sharing works">
+    Share a thread and verify the public URL is accessible without authentication.
+
+    <Check>Shared threads are publicly viewable</Check>
+  </Step>
+</Steps>
+
+## Rollback plan
+
+<Warning>
+If any post-deployment check fails, roll back immediately.
+</Warning>
+
+<Tabs>
+  <Tab title="Backend Rollback">
+    Redeploy the previous version from Azure App Service → Deployment Center → select previous deployment.
+
+    Or revert the Git commit:
+    ```bash filename="Terminal"
+    git revert HEAD
+    git push origin main
+    ```
+  </Tab>
+  <Tab title="Frontend Rollback">
+    ```bash filename="Terminal"
+    npx wrangler rollback
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+Always keep the previous deployment artifacts available for at least 48 hours after a new deployment.
+</Note>

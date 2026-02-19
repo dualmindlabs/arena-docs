@@ -1,0 +1,193 @@
+---
+title: "Contributing to DualMind Lab"
+sidebarTitle: "Contributing"
+description: "How to contribute to DualMind Lab — code standards, pull request workflow, and development guidelines."
+keywords: ["contributing", "development", "pull request", "guidelines", "enterprise"]
+---
+
+# Contributing Guide
+
+> DualMind Lab is a blind AI model comparison platform built with .NET 8, Supabase, and Cloudflare Workers. Users compare two AI models side-by-side without knowing which is which, vote on the better response, and build crowd-sourced ELO rankings.
+
+<Info>
+Before contributing, make sure you've completed the [local development setup](/development/setup).
+</Info>
+
+## Getting started
+
+<Steps>
+  <Step title="Fork the repository">
+    Fork the relevant repository on GitHub:
+
+    <CardGroup cols={3}>
+      <Card title="Backend" icon="server" href="https://github.com/HarshBhanushali07/DualMind_Back">
+        .NET 8 API
+      </Card>
+      <Card title="Frontend" icon="monitor" href="https://github.com/HarshBhanushali07/DualMind_UI">
+        Vanilla JS SPA
+      </Card>
+      <Card title="Admin" icon="shield" href="https://github.com/HarshBhanushali07/DualMind_Admin-UI">
+        Admin dashboard
+      </Card>
+    </CardGroup>
+  </Step>
+
+  <Step title="Create a feature branch">
+    ```bash filename="Terminal"
+    git checkout -b feature/your-feature-name
+    ```
+
+    <Tip>Use descriptive branch names: `feature/add-openai-provider`, `fix/jwt-expiry-handling`, `docs/update-api-reference`.</Tip>
+  </Step>
+
+  <Step title="Make your changes">
+    Follow the code standards below and ensure all tests pass before submitting.
+  </Step>
+
+  <Step title="Submit a pull request">
+    Push your branch and open a PR against `main`:
+
+    ```bash filename="Terminal"
+    git push origin feature/your-feature-name
+    ```
+
+    <Check>Include a clear description of what changed and why.</Check>
+  </Step>
+</Steps>
+
+## Code standards
+
+### Backend (C# / .NET 8)
+
+<AccordionGroup>
+  <Accordion title="Naming conventions">
+    - **Classes**: PascalCase — `ArenaController`, `ChatProviderFactory`
+    - **Methods**: PascalCase — `SendMessageAsync`, `GetThreadById`
+    - **Variables**: camelCase — `threadId`, `modelResponse`
+    - **Constants**: PascalCase — `MaxRetryAttempts`
+    - **Interfaces**: Prefix with `I` — `IChatProvider`, `ISupabaseClient`
+  </Accordion>
+
+  <Accordion title="Architecture patterns">
+    - Controllers handle HTTP concerns only — no business logic
+    - Services contain business logic
+    - Use dependency injection for all services
+    - Async/await for all I/O operations
+    - Return `IActionResult` from controllers
+  </Accordion>
+
+  <Accordion title="Error handling">
+    ```csharp filename="ExampleController.cs"
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        try
+        {
+            var result = await _service.GetByIdAsync(id);
+            if (result == null)
+                return NotFound(new { error = "NOT_FOUND", message = $"Resource {id} not found" });
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get resource {Id}", id);
+            return StatusCode(500, new { error = "API_ERROR", message = "Internal server error" });
+        }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Frontend (JavaScript)
+
+<AccordionGroup>
+  <Accordion title="File organization">
+    ```
+    js/
+    ├── api/           # API client and service modules
+    │   ├── config/    # Environment configuration
+    │   ├── core/      # Base HTTP client
+    │   └── services/  # Endpoint-specific services
+    ├── pages/         # Page-specific scripts
+    └── utils.js       # Shared utilities
+    ```
+  </Accordion>
+
+  <Accordion title="Code style">
+    - Use `const` by default, `let` when reassignment is needed
+    - Arrow functions for callbacks
+    - Template literals for string interpolation
+    - Async/await over `.then()` chains
+    - Descriptive variable names — no single-letter variables
+  </Accordion>
+</AccordionGroup>
+
+## Commit conventions
+
+Use conventional commit messages:
+
+| Prefix | Usage | Example |
+|--------|-------|---------|
+| `feat:` | New feature | `feat: add OpenAI provider integration` |
+| `fix:` | Bug fix | `fix: handle expired JWT in streaming` |
+| `docs:` | Documentation | `docs: update API reference for voting` |
+| `refactor:` | Code refactoring | `refactor: extract model selection logic` |
+| `test:` | Adding tests | `test: add unit tests for ArenaController` |
+| `chore:` | Maintenance | `chore: update NuGet dependencies` |
+
+## Pull request checklist
+
+Before submitting your PR, verify:
+
+<Steps>
+  <Step title="Code compiles without errors">
+    ```bash filename="Terminal"
+    dotnet build
+    ```
+    <Check>No build errors or warnings</Check>
+  </Step>
+
+  <Step title="Tests pass">
+    ```bash filename="Terminal"
+    dotnet test
+    ```
+    <Check>All existing tests still pass</Check>
+  </Step>
+
+  <Step title="New tests added">
+    Add tests for any new functionality or bug fixes.
+  </Step>
+
+  <Step title="Documentation updated">
+    Update relevant docs if your change affects the API, configuration, or user-facing behavior.
+  </Step>
+
+  <Step title="No secrets committed">
+    <Warning>
+    Never commit API keys, connection strings, or other secrets. Use environment variables.
+    </Warning>
+  </Step>
+</Steps>
+
+## What to contribute
+
+<CardGroup cols={2}>
+  <Card title="Good First Issues" icon="seedling">
+    Look for issues labeled `good-first-issue` on GitHub — these are beginner-friendly tasks.
+  </Card>
+  <Card title="Bug Reports" icon="bug">
+    Found a bug? Open an issue with reproduction steps, expected vs actual behavior, and environment details.
+  </Card>
+  <Card title="New Providers" icon="plug">
+    Add support for new AI providers by implementing the `IChatProvider` interface.
+  </Card>
+  <Card title="Documentation" icon="book">
+    Improve docs, fix typos, add examples, or translate content.
+  </Card>
+</CardGroup>
+
+## Need help?
+
+<Note>
+If you're stuck or unsure about an approach, open a draft PR early and ask for feedback. We're happy to guide contributors.
+</Note>

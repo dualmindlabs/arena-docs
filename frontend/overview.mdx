@@ -1,0 +1,92 @@
+---
+title: Frontend Overview
+sidebarTitle: Overview
+description: Frontend architecture overview for DualMind Lab — vanilla JS SPA with modular API client, SSE streaming, and Supabase auth.
+keywords: ["frontend", "overview", "vanilla JS", "API client", "Supabase"]
+---
+
+## Stack
+
+DualMind Lab's frontend is a **vanilla JavaScript** application with no build step. It uses ES modules, custom CSS, and is served via Cloudflare Workers in production.
+
+| Aspect | Details |
+|--------|---------|
+| **Language** | Vanilla JavaScript (ES modules) |
+| **Build** | None — served as-is |
+| **Auth** | Supabase JS client via CDN |
+| **Styling** | Custom CSS (no framework) |
+| **Dev server** | `npx serve . -p 8000` |
+| **Production** | Cloudflare Workers |
+
+## Key files
+
+| File | Purpose |
+|------|---------|
+| `config.js` | Runtime configuration: API URL, Supabase keys, feature flags, streaming settings |
+| `js/api/DualMindApi.js` | API client facade — singleton `api` export |
+| `js/app-final.js` | Application entry point |
+| `js/arena-core.js` | Arena battle mode logic |
+| `js/chat-handler.js` | Chat message send/receive |
+| `components/chat/ChatView.js` | Chat message rendering |
+| `components/ChatInput.js` | User input with auto-resize |
+| `worker.js` | Cloudflare Worker for production |
+
+## API client
+
+The `DualMindApi` class provides a clean interface to the backend:
+
+```javascript filename="API usage example"
+import { api } from './js/api/DualMindApi.js';
+
+// Single chat
+const res = await api.arena.chat({ prompt: "Hello" });
+
+// Dual chat battle
+const battle = await api.arena.dualChat({
+    prompt: "Explain quantum computing",
+    threadId: "optional-thread-id"
+});
+
+// Vote on comparison
+await api.arena.vote({
+    comparisonId: battle.comparisonId,
+    winner: "agent1"
+});
+
+// Get leaderboard stats
+const stats = await api.arena.getStats();
+
+// Thread management
+const threads = await api.threads.getThreads();
+const thread = await api.threads.createThread({ title: "New Chat" });
+const messages = await api.threads.getMessages(thread.threadId);
+```
+
+## Configuration
+
+All runtime configuration is in `config.js` via `window.DUALMIND_CONFIG`:
+
+- **`apiBaseUrl`** — Auto-detected: `localhost:5079` for dev, `api.dualmindlab.tech` for production
+- **`supabase.url`** / **`supabase.anonKey`** — Supabase project credentials
+- **`streaming.enabled`** — SSE streaming toggle (default: `true`)
+- **`features.*`** — Feature flags for streaming, voting, threads, leaderboard
+- **`speedPreset`** — `'fast'`, `'balanced'`, or `'quality'` presets
+
+## Auth flow
+
+1. User visits `/login` page
+2. Clicks "Login with Google" → Supabase OAuth redirect
+3. After consent, redirected back with JWT in URL hash
+4. Supabase JS client stores session (localStorage)
+5. All subsequent API calls include `Authorization: Bearer <jwt>` header automatically via `HttpClient`
+
+## Pages
+
+| URL path | HTML file | Description |
+|----------|-----------|-------------|
+| `/` | `index.html` | Main chat/arena interface |
+| `/login` | `login/index.html` | Authentication |
+| `/leaderboard` | `leaderboard/index.html` | Model rankings |
+| `/models` | `models/index.html` | Browse AI models |
+| `/share` | `share/index.html` | View shared threads |
+| `/about` | `about/index.html` | About page |

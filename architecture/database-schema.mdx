@@ -1,0 +1,396 @@
+---
+title: "Database Schema"
+description: "PostgreSQL table structures and relationships"
+keywords: ["database", "PostgreSQL", "tables", "schema", "Supabase"]
+---
+
+## Schema Overview
+
+DualMind uses **9 PostgreSQL tables** in Supabase:
+
+```
+users (authentication & ownership)
+  ↓ owns
+threads (conversation containers)
+  ↓ contains
+thread_messages (chat history)
+  ↓ references
+comparisons (dual-chat pairs)
+  ↓ voted on
+model_votes (user preferences)
+  ↓ references
+ai_models (model registry)
+```
+
+## Core Tables
+
+### users
+
+**Purpose**: User records synced from Supabase Auth
+
+```sql
+CREATE TABLE users (
+  user_id UUID PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  full_name VARCHAR(255),
+  role VARCHAR(50) DEFAULT 'user',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX idx_users_email ON users(email);
+```
+
+**Constraints**:
+- `user_id` matches Supabase Auth UUID (from JWT `sub`)
+- `email` must be unique
+- `role` always `"user"` (admin roles not implemented)
+
+**UPSERT Pattern**:
+```sql
+INSERT INTO users (user_id, email, full_name)
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id) DO UPDATE
+SET email = EXCLUDED.email, full_name = EXCLUDED.full_name;
+```
+
+### threads
+
+**Purpose**: Conversation containers with visibility control
+
+```sql
+CREATE TABLE threads (
+  thread_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  title VARCHAR(500) DEFAULT 'New Thread',
+  visibility VARCHAR(20) DEFAULT 'private' CHECK (visibility IN ('private', 'public', 'unlisted')),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_threads_user_id ON threads(user_id);
+CREATE INDEX idx_threads_created_at ON threads(created_at DESC);
+CREATE INDEX idx_threads_user_created ON threads(user_id, created_at DESC);
+```
+
+**Cascade Behavior**:
+- Deleting user → deletes all their threads
+- Deleting thread → deletes all messages in thread
+
+**Visibility Values**:
+- `private`: Owner-only access
+- `public`: Accessible to anyone
+- `unlisted`: Accessible via direct link
+
+### thread_messages
+
+**Purpose**: Chat messages with AI responses
+
+```sql
+CREATE TABLE thread_messages (
+  message_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  thread_id UUID NOT NULL REFERENCES threads(thread_id) ON DELETE CASCADE,
+  comparison_id UUID REFERENCES comparisons(comparison_id) ON DELETE SET NULL,
+  prompt_text TEXT NOT NULL,
+  model1_name VARCHAR(100),
+  model1_response TEXT,
+  model1_time_ms INTEGER,
+  model2_name VARCHAR(100),
+  model2_response TEXT,
+  model2_time_ms INTEGER,
+  vote_choice VARCHAR(20),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_messages_thread_id ON thread_messages(thread_id);
+CREATE INDEX idx_messages_created_at ON thread_messages(created_at);
+CREATE INDEX idx_messages_thread_created ON thread_messages(thread_id, created_at);
+```
+
+**Single vs Dual Chat**:
+- Single chat: `model2_*` fields NULL, `comparison_id` NULL
+- Dual chat: All fields populated, `comparison_id` references comparison
+
+**Vote Choice**: Null until user votes, then `left`, `right`, `tie`, or `both-bad`
+
+### comparisons
+
+**Purpose**: Dual-chat model pairs with responses
+
+```sql
+CREATE TABLE comparisons (
+  comparison_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  prompt_text TEXT NOT NULL,
+  model1_id UUID NOT NULL REFERENCES ai_models(model_id),
+  model1_response TEXT,
+  model1_time_ms INTEGER,
+  model2_id UUID NOT NULL REFERENCES ai_models(model_id),
+  model2_response TEXT,
+  model2_time_ms INTEGER,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_comparisons_user_id ON comparisons(user_id);
+CREATE INDEX idx_comparisons_created_at ON comparisons(created_at);
+CREATE INDEX idx_comparisons_models ON comparisons(model1_id, model2_id);
+```
+
+**Foreign Keys**:
+- `user_id`: Who created comparison
+- `model1_id`, `model2_id`: Which models were compared
+
+**Relationship**: Comparison can exist without thread message (standalone comparisons possible)
+
+### model_votes
+
+**Purpose**: User votes on comparisons
+
+```sql
+CREATE TABLE model_votes (
+  vote_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  comparison_id UUID NOT NULL REFERENCES comparisons(comparison_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  winner_model_id UUID REFERENCES ai_models(model_id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_votes_comparison_id ON model_votes(comparison_id);
+CREATE INDEX idx_votes_user_id ON model_votes(user_id);
+CREATE INDEX idx_votes_winner_model ON model_votes(winner_model_id);
+```
+
+**Vote Mechanics**:
+- `left` vote: 1 row with `winner_model_id = model1_id`
+- `right` vote: 1 row with `winner_model_id = model2_id`
+- `tie` vote: 2 rows (one for each model)
+- `both-bad` vote: 1 row with `winner_model_id = NULL`
+
+**Duplicates Allowed**: Same user can vote multiple times on same comparison (enables vote changes)
+
+### ai_models
+
+**Purpose**: Model registry with provider metadata
+
+```sql
+CREATE TABLE ai_models (
+  model_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  model_name VARCHAR(100) UNIQUE NOT NULL,
+  display_name VARCHAR(255),
+  provider_name VARCHAR(50) NOT NULL,
+  api_url VARCHAR(500),
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX idx_models_name ON ai_models(model_name);
+CREATE INDEX idx_models_status ON ai_models(status);
+```
+
+**Status**:
+- `active`: Eligible for random selection
+- `inactive`: Can be explicitly requested but not randomly selected
+
+## Supporting Tables
+
+### system_settings
+
+**Purpose**: Feature flags and configuration
+
+```sql
+CREATE TABLE system_settings (
+  setting_key VARCHAR(100) PRIMARY KEY,
+  setting_value TEXT,
+  data_type VARCHAR(20) DEFAULT 'string',
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Feature Flags**:
+- `public_sharing`: Enable public/unlisted threads
+- Other flags as needed
+
+### message_logs
+
+**Purpose**: Internal audit trail (not exposed via API)
+
+```sql
+CREATE TABLE message_logs (
+  log_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID,
+  session_id VARCHAR(100),
+  model_name VARCHAR(100),
+  prompt_text TEXT,
+  response_text TEXT,
+  response_time_ms INTEGER,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_logs_user_id ON message_logs(user_id);
+CREATE INDEX idx_logs_created_at ON message_logs(created_at);
+```
+
+**Usage**: Backend logging for analytics (not user-facing)
+
+### api_keys
+
+**Purpose**: Reserved for future API key authentication (not currently used)
+
+```sql
+CREATE TABLE api_keys (
+  key_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  key_hash VARCHAR(255) NOT NULL,
+  name VARCHAR(100),
+  created_at TIMESTAMP DEFAULT NOW(),
+  expires_at TIMESTAMP
+);
+```
+
+**Status**: Table exists but JWT auth is current mechanism
+
+## Relationships Diagram
+
+```
+users (1) ──owns──> (N) threads
+threads (1) ──contains──> (N) thread_messages
+comparisons (1) ──links to──> (0-1) thread_messages
+model_votes (N) ──references──> (1) comparisons
+model_votes (N) ──references──> (1) ai_models (as winner)
+comparisons (1) ──uses──> (2) ai_models
+```
+
+## Index Strategy
+
+### High-Traffic Queries
+
+**User's threads**:
+```sql
+SELECT * FROM threads WHERE user_id = $1 ORDER BY created_at DESC;
+-- Uses: idx_threads_user_created (composite index)
+```
+
+**Thread messages**:
+```sql
+SELECT * FROM thread_messages WHERE thread_id = $1 ORDER BY created_at;
+-- Uses: idx_messages_thread_created (composite index)
+```
+
+**Random model selection**:
+```sql
+SELECT * FROM ai_models WHERE status = 'active' ORDER BY RANDOM() LIMIT 1;
+-- Uses: idx_models_status (filter) then random sort
+```
+
+**Model statistics**:
+```sql
+SELECT winner_model_id, COUNT(*) as wins
+FROM model_votes
+GROUP BY winner_model_id;
+-- Uses: idx_votes_winner_model (aggregation)
+```
+
+### Composite Indexes
+
+Composite indexes optimize common query patterns:
+- `(user_id, created_at)`: User's recent threads/messages
+- `(thread_id, created_at)`: Chronological message retrieval
+- `(model1_id, model2_id)`: Find comparisons between specific models
+
+## Data Integrity Constraints
+
+### Foreign Key Cascades
+
+**ON DELETE CASCADE**:
+- `threads.user_id → users.user_id`: Deleting user removes threads
+- `thread_messages.thread_id → threads.thread_id`: Deleting thread removes messages
+- `comparisons.user_id → users.user_id`: Deleting user removes comparisons
+- `model_votes.comparison_id → comparisons.comparison_id`: Deleting comparison removes votes
+
+**ON DELETE SET NULL**:
+- `thread_messages.comparison_id → comparisons.comparison_id`: Deleting comparison preserves message
+- `model_votes.winner_model_id → ai_models.model_id`: Deleting model preserves vote record
+
+### Check Constraints
+
+```sql
+visibility IN ('private', 'public', 'unlisted')
+status IN ('active', 'inactive')
+vote_choice IN ('left', 'right', 'tie', 'both-bad')
+```
+
+### Unique Constraints
+
+```sql
+UNIQUE (user_id)       -- users table (PRIMARY KEY)
+UNIQUE (email)         -- users table
+UNIQUE (model_name)    -- ai_models table
+UNIQUE (setting_key)   -- system_settings table
+```
+
+## Query Patterns
+
+### Vote Statistics Aggregation
+
+```sql
+SELECT 
+  am.model_name,
+  am.display_name,
+  COUNT(mv.vote_id) as total_wins,
+  (SELECT COUNT(*) FROM comparisons 
+   WHERE model1_id = am.model_id OR model2_id = am.model_id) as appearances,
+  (COUNT(mv.vote_id) * 100.0 / NULLIF(
+    (SELECT COUNT(*) FROM comparisons 
+     WHERE model1_id = am.model_id OR model2_id = am.model_id), 0)
+  ) as win_rate
+FROM ai_models am
+LEFT JOIN model_votes mv ON mv.winner_model_id = am.model_id
+GROUP BY am.model_id, am.model_name, am.display_name
+ORDER BY win_rate DESC NULLS LAST;
+```
+
+**Performance**: Expensive query (2 subqueries per row). Consider materialized view for production.
+
+### Thread Ownership Verification
+
+```sql
+SELECT user_id FROM threads WHERE thread_id = $1;
+-- Compare result to JWT user_id. If mismatch → 403 Forbidden
+```
+
+**Access Control**: All authorization logic in application code (no RLS policies)
+
+## Storage Considerations
+
+### Text Field Sizes
+
+**Large TEXT fields**:
+- `prompt_text`: User prompts (typically <2KB)
+- `model1_response`, `model2_response`: AI responses (typically 500-5000 tokens = 2-20KB)
+
+**VARCHAR limits**:
+- `email`: 255 chars (RFC 5321 limit)
+- `model_name`: 100 chars (provider naming convention)
+- `title`: 500 chars (UI enforced limit)
+
+### Growth Projections
+
+**High-growth tables**:
+- `thread_messages`: Grows with every chat request
+- `comparisons`: Grows with every dual-chat request
+- `model_votes`: Grows with every vote submission
+
+**Low-growth tables**:
+- `users`: Grows with new user registrations
+- `ai_models`: Static (manual additions only)
+- `threads`: Grows slower than messages (threads reused)
+
+## Next Steps
+
+<CardGroup cols="2">
+  <Card title="Request Lifecycle" icon="diagram-project" href="/architecture/request-lifecycle">
+    Execution flow through system
+  </Card>
+  <Card title="System Invariants" icon="shield-check" href="/architecture/invariants">
+    Enforceable constraints
+  </Card>
+</CardGroup>

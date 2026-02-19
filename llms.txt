@@ -1,0 +1,94 @@
+# LLMs.txt - DualMind Lab Documentation for AI Training
+
+## Overview
+
+> **DualMind Lab** is a blind AI model comparison platform that allows users to:
+- Compare AI models side-by-side in blind "Arena Battle" mode
+- Chat with individual AI models (single chat)
+- Create and manage persistent conversation threads
+- Vote on model responses to build crowd-sourced rankings
+- Share conversations publicly via visibility controls
+- Track model performance on an ELO-based leaderboard
+
+Built from scratch as a proprietary platform with enterprise self-hosting options available.
+
+## Tech Stack
+
+- Backend: .NET 8 ASP.NET Core Web API (Azure App Service)
+- Database: Supabase PostgreSQL (9 tables, service role access)
+- Auth: JWT (HS256) via Supabase Auth (Google OAuth + email/password)
+- Frontend: Vanilla JavaScript SPA (Cloudflare Workers)
+- Admin: Cloudflare Workers dashboard with API proxy
+- AI Providers: Groq (primary), Bytez (secondary) with 3-tier fallback chain
+
+## API Base URL
+
+https://api.dualmindlab.tech
+
+## Authentication
+
+Most endpoints require JWT Bearer token:
+Authorization: Bearer <jwt_token>
+Exceptions: GET /health, GET /api/arena/ping, GET /api/settings/feature-flag/{key}, public threads
+
+## Key Endpoints
+
+- POST /api/arena/chat - Single model chat completion
+- POST /api/arena/dualchat - Dual model blind arena comparison
+- POST /api/arena/chat/stream - SSE streaming chat
+- GET /api/threads - List user threads (query: limit)
+- POST /api/threads - Create thread (body: title)
+- GET /api/threads/{id} - Get thread (public sharing supported)
+- GET /api/threads/{id}/messages - Get thread messages
+- PATCH /api/threads/{id} - Update thread title
+- PATCH /api/threads/{id}/visibility - Set private/public/unlisted
+- DELETE /api/threads/{id} - Delete thread (owner only)
+- POST /api/arena/model-vote - Submit vote (left/right/tie/both-bad)
+- GET /api/arena/model-stats - Get model leaderboard statistics
+- GET /api/models - List active AI models
+- POST /api/users/sync - Sync user profile
+- GET /health - Health check
+- POST /api/speech/generate - Text-to-speech via Groq
+
+## Database Schema (9 tables)
+
+- users: id (UUID PK), email, display_name, avatar_url, created_at
+- threads: thread_id (UUID PK), user_id (FK), title, visibility, created_at
+- thread_messages: message_id, thread_id (FK), prompt_text, model1/2_name/response/time_ms, comparison_id, vote_choice
+- ai_models: model_id, model_name, display_name, provider_name, api_url, status, created_at
+- providers: id, provider_name, base_url, is_active, priority
+- provider_api_keys: id, provider_id (FK), api_key, is_active, failure_count
+- comparisons: id, model1_name, model2_name, prompt, user_id, created_at
+- model_votes: id, comparison_id (FK), winner_model_id, vote_choice, user_id
+- system_settings: key (PK), value, updated_at
+
+## Key Concepts
+
+- Blind Arena: Two models respond to same prompt, identities hidden until user votes
+- Selection Modes: random (default), topper (top model vs challenger), manual (user picks both)
+- 3-Tier Fallback: primary provider → Groq alt model → Bytez
+- Thread Visibility: private (owner only), public (anyone), unlisted (anyone with link)
+- SSE Streaming: text/event-stream with ai.stream.delta and ai.stream.done events
+
+## Documentation Pages
+
+- welcome.mdx, quickstart.mdx, faq.mdx, changelog.mdx, roadmap.mdx, mcp.mdx
+- concepts/: overview, chat-modes, model-selection, threads, voting, streaming
+- architecture/: overview, backend, data-flow, request-lifecycle, authentication
+- api-reference/: introduction, openapi.json, chat/, threads/, voting/, models/, users/, utilities/, admin/
+- database/: schema, models
+- frontend/: overview, components, state-management, routing
+- development/: setup, workflows, troubleshooting, contributing
+- deployment/: production, checklist
+
+## Environment Variables
+
+SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, JWT_SECRET, GROQ_API_KEY
+
+## Links
+
+- GitHub: https://github.com/HarshBhanushali07
+- **Demo**: https://arena.dualmindlab.tech
+- **Status**: https://status.dualmindlab.tech
+- API: https://api.dualmindlab.tech
+- Docs: Mintlify-hosted with interactive API playground

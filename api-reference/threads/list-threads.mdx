@@ -1,0 +1,190 @@
+---
+title: "GET /api/threads"
+api: "GET /api/threads"
+description: "List user's conversation threads"
+---
+
+## Authentication
+
+**Required**: JWT Bearer token
+
+**JWT Claims Extraction** (Lines 39-43):
+```csharp
+sub | ClaimTypes.NameIdentifier → User UUID (required)
+```
+
+## Query Parameters
+
+<ParamField query="limit" type="integer" default="20">
+  Maximum threads to return
+
+  **Validation**: None (controller accepts any integer)
+  
+  **Default**: 20 (Line 34)
+  
+  **Range**: Not enforced by API contract (database-dependent)
+</ParamField>
+
+## Response
+
+<ResponseField name="items" type="array">
+  Array of thread objects
+  
+  <Expandable title="Thread object">
+    <ResponseField name="thread_id" type="string">
+      UUID identifier
+    </ResponseField>
+    <ResponseField name="user_id" type="string">
+      Owner UUID (matches authenticated user)
+    </ResponseField>
+    <ResponseField name="title" type="string">
+      Thread title
+    </ResponseField>
+    <ResponseField name="visibility" type="string">
+      `"private"`, `"public"`, or `"unlisted"`
+    </ResponseField>
+    <ResponseField name="created_at" type="string">
+      ISO8601 UTC timestamp
+    </ResponseField>
+    <ResponseField name="updated_at" type="string">
+      ISO8601 UTC timestamp
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET 'http://localhost:5079/api/threads?limit=50' \
+  -H 'Authorization: Bearer YOUR_JWT_TOKEN'
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:5079/api/threads?limit=50', {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${jwt}`
+  }
+});
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'http://localhost:5079/api/threads',
+    headers={'Authorization': f'Bearer {jwt}'},
+    params={'limit': 50}
+)
+
+threads = response.json()
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 Success
+{
+  "items": [
+    {
+      "thread_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "user_id": "user-uuid-here",
+      "title": "Chat about AI",
+      "visibility": "private",
+      "created_at": "2024-01-15T10:30:00.000Z",
+      "updated_at": "2024-01-15T11:45:00.000Z"
+    }
+  ]
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "User ID claim missing"
+}
+```
+
+```json 500 THREADS_ERROR
+{
+  "success": false,
+  "error": "Database connection failed",
+  "code": "THREADS_ERROR"
+}
+```
+</ResponseExample>
+
+## Authorization
+
+**Ownership Filter** (Line 50):
+```csharp
+await _threadsService.GetThreadsAsync(userId, limit);
+```
+
+**Guaranteed Behavior**:
+- Returns ONLY threads owned by authenticated user
+- userId extracted from JWT claims
+- No visibility filtering (returns all user's threads regardless of visibility)
+
+**Visibility Rules**:
+- User sees all their own threads (`private`, `public`, `unlisted`)
+- User NEVER sees threads owned by others
+
+## Side Effects
+
+**Database Reads** (Line 50):
+- SELECT from `threads` table WHERE `user_id = userId`
+- Ordered by creation date (descending, assumed from service)
+
+**No Database Writes**: Read-only endpoint
+
+## Permissions
+
+**Who Can Read**:
+- Authenticated user (their own threads only)
+
+**Who Cannot Read**:
+- Unauthenticated users
+- Other authenticated users (cross-user access forbidden)
+
+## Edge Cases
+
+1. **Missing user ID claim**: 401 error (Lines 45-48)
+2. **Zero threads**: Returns `{"items": []}` (empty array)
+3. **Limit = 0**: Behavior not enforced by server contract (service-dependent)
+4. **Limit < 0**: Behavior not enforced by server contract (service-dependent)
+5. **Limit > database max**: Service may cap internally (not documented)
+
+## Error Conditions
+
+| Code | HTTP | Cause | Controller Line |
+|------|------|-------|----------------|
+| N/A | 401 | JWT missing or invalid | Middleware |
+| N/A | 401 | User ID claim missing/invalid GUID | 45-48 |
+| `THREADS_ERROR` | 500 | Service exception | 54-62 |
+
+**Exception Handling** (Lines 54-62):
+```csharp
+catch (Exception ex) {
+    return StatusCode(500, new { error = ex.Message, code = "THREADS_ERROR" });
+}
+```
+- All service exceptions return 500
+- Error message exposed to client
+
+## Pagination Behavior
+
+**Current Implementation**: Simple limit-based
+
+**No Cursor/Offset**: Controller does not support pagination beyond limit
+
+**Ordering**: Not specified by API contract (service-defined)
+
+**Server Contract**: Returns first `limit` threads (ordering implementation-defined)
+
+## Performance Characteristics
+
+**Database Query**: Single SELECT with WHERE clause
+
+**Index Requirements**: `threads.user_id` should be indexed for performance
+
+**Response Size**: Proportional to limit value (uncapped by controller)

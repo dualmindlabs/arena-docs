@@ -1,0 +1,131 @@
+---
+title: Troubleshooting
+sidebarTitle: Troubleshooting
+description: Common issues and debug strategies for DualMind Lab development.
+keywords: ["troubleshooting", "debugging", "errors", "common issues", "fixes"]
+---
+
+<Info>
+This page covers the most common issues developers encounter. For setup-specific problems, see the [Quickstart troubleshooting](/quickstart#common-issues) section.
+</Info>
+
+## Common issues
+
+### Backend won't start
+
+**Symptom**: `dotnet run` fails or API returns 500 on all requests.
+
+**Causes and fixes**:
+
+| Cause | Fix |
+|-------|-----|
+| Missing `.env` file | Create `.env` in `src/DualMind.API/` with required variables |
+| Invalid `SUPABASE_URL` | Ensure URL has no trailing slash, starts with `https://` |
+| Missing `JWT_SECRET` | Set `JWT_SECRET` from Supabase dashboard → Settings → API → JWT Secret |
+| Port conflict | Change port in `launchSettings.json` or use `dotnet run --urls http://localhost:5080` |
+
+### JWT authentication fails (401)
+
+**Symptom**: All authenticated endpoints return 401.
+
+**Debug steps**:
+
+1. Check the JWT token is being sent: `Authorization: Bearer <token>`
+2. Verify token is not expired (Supabase tokens expire after 1 hour by default)
+3. Check `JWT_SECRET` matches your Supabase project
+4. In dev without `JWT_SECRET`, the backend bypasses signature validation (warning logged)
+5. Check backend logs for `JWT authentication failed` or `JWT Challenge` messages
+
+```bash filename="Debug: Decode JWT"
+# Decode JWT to inspect claims (use jwt.io or)
+echo "YOUR_TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null | python -m json.tool
+```
+
+### FK violation on thread/comparison creation
+
+**Symptom**: `INSERT INTO threads` or `INSERT INTO comparisons` fails with foreign key error.
+
+**Root cause**: The `public.users` row doesn't exist. Supabase Auth creates users in `auth.users` but not in `public.users`.
+
+**Fix**: The backend calls `UserSyncService.EnsureUserExistsAsync()` before any FK-dependent operation. If this is failing, check:
+- The Supabase service role key has permission to insert into `public.users`
+- The JWT `sub` claim contains a valid UUID
+
+### AI provider errors
+
+**Symptom**: Chat requests return `API_ERROR`.
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Groq API error (401)` | Invalid API key | Check `GROQ_API_KEY` or database keys |
+| `Groq API error (429)` | Rate limited | Key rotation should handle this; add more keys |
+| `Provider 'X' timed out after 45s` | Slow provider | Fallback to Groq activates automatically |
+| `ProviderExhaustedException` | All keys exhausted | Add more API keys via admin panel |
+| `Both primary and fallback failed` | All providers down | Check provider status pages |
+
+### Frontend can't connect to backend
+
+**Symptom**: Network errors in browser console, "Backend unavailable" messages.
+
+**Fix**:
+
+1. Verify backend is running: `curl http://localhost:5079/health`
+2. Check `config.js` — `apiBaseUrl` should be `http://localhost:5079` for local dev
+3. Check CORS — backend allows all origins in dev (`AllowAll` policy)
+4. Check browser console for specific error messages
+
+### Streaming not working
+
+**Symptom**: Chat responses arrive all at once instead of streaming.
+
+**Causes**:
+- Backend: Ensure `Content-Type: text/event-stream` is set on the response
+- Frontend: Must use `fetch()` with `ReadableStream`, not `EventSource` (POST body required)
+- Proxy: Some proxies buffer SSE responses. Cloudflare Workers pass through correctly.
+- Config: Check `window.DUALMIND_CONFIG.streaming.enabled === true`
+
+## Debug strategies
+
+### Backend logging
+
+The backend logs every request with correlation ID:
+
+```text filename="Backend log output"
+[abc12345] POST /api/arena/dualchat started
+[abc12345] POST /api/arena/dualchat completed in 2340ms with 200
+```
+
+Check the `X-Correlation-Id` response header to trace requests through logs.
+
+### Supabase dashboard
+
+Use the Supabase dashboard to:
+- **Table Editor**: Inspect data in all tables
+- **SQL Editor**: Run queries directly
+- **Auth**: Check user sessions and tokens
+- **Logs**: View PostgREST and Auth logs
+
+### Frontend debugging
+
+Enable debug mode in `config.js`:
+
+```javascript filename="config.js"
+window.DUALMIND_CONFIG.debug.enabled = true;
+window.DUALMIND_CONFIG.debug.logApiCalls = true;
+```
+
+## Error code reference
+
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `INVALID_REQUEST` | 400 | Missing or invalid request parameters |
+| `UNAUTHORIZED` | 401 | Missing or invalid JWT token |
+| `FORBIDDEN` | 403 | Authenticated but lacks permission |
+| `NOT_FOUND` | 404 | Resource not found |
+| `API_ERROR` | 500 | Internal server error |
+| `STREAM_ERROR` | 500 | SSE stream failure |
+| `THREADS_ERROR` | 500 | Thread operation failure |
+| `THREAD_CREATE_ERROR` | 500 | Thread creation failure |
+| `MODELS_ERROR` | 500 | Model listing failure |
+| `MESSAGES_ERROR` | 500 | Message retrieval failure |
+| `SETTINGS_ERROR` | 500 | Settings/feature flag failure |
