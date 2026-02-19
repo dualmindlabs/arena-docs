@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
+  "theme": "linden",
   "name": "DualMind Arena",
   "logo": {
     "light": "/logo/light.svg",
@@ -52,17 +52,6 @@
             "pages": [
               "roadmap",
               "changelog"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "API Reference",
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": [
-              "api-reference/introduction"
             ]
           }
         ]

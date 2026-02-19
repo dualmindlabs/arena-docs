@@ -1,57 +1,153 @@
 ---
 title: "Roadmap"
 sidebarTitle: "Roadmap"
-description: "Future features and improvements planned for DualMind Arena."
-keywords: ["roadmap", "features", "future", "planned"]
+description: "What we are building next and the thinking behind it."
+keywords: ["roadmap", "features", "future", "planned", "ai", "benchmarking"]
 ---
 
 # Product Roadmap
 
-We are constantly improving DualMind Arena to provide the most accurate and useful AI model comparisons.
+DualMind Arena is in active development. This page reflects our current thinking on what we are building next, organized by theme. Priorities are informed by usage patterns, platform stability, and the goal of making AI model evaluation as rigorous and useful as possible.
 
 <Info>
-Priorities may shift based on community feedback. Have a suggestion? Let us know!
+  This roadmap reflects intent, not a delivery commitment. We ship incrementally and adjust based on what we learn.
 </Info>
 
-## Upcoming Features
+---
+
+## In Progress
+
+<CardGroup cols={2}>
+  <Card title="Expanded Model Roster" icon="microchip">
+    Continuous integration of new frontier models as providers release them. Our goal is zero lag between a model's public release and its availability in Arena comparisons.
+
+    **Focus areas:**
+    - Automated model ingestion pipeline
+    - Provider health monitoring and fallback
+    - Model metadata standardization across providers
+  </Card>
+
+  <Card title="Category-Specific Leaderboards" icon="chart-bar">
+    The global ELO leaderboard treats all prompts equally. Category boards will segment rankings by task type — so you can see which model leads on code, which leads on reasoning, and which leads on creative writing.
+
+    **Planned categories:**
+    - Code generation & debugging
+    - Logical reasoning & math
+    - Summarization & compression
+    - Creative writing & tone control
+    - Instruction following & structured output
+  </Card>
+</CardGroup>
+
+---
+
+## Upcoming
 
 <Steps>
-  <Step title="Expanded Model Roster">
-    Integration of the latest frontier models from major providers as soon as they are released.
+  <Step title="Anonymous vs. Identified Voting Study">
+    We plan to run a controlled study comparing vote distributions when model names are shown before voting vs. hidden until after. This will produce a quantified measure of brand bias — a number we intend to publish.
+
+    This is foundational to the platform's credibility: if blind and identified votes diverge significantly, it validates the core design. If they don't, we learn something equally important.
   </Step>
 
-  <Step title="Advanced Analytics">
-    Deeper insights into model performance:
-    - Coding prowess vs. creative writing
-    - Instruction following accuracy
-    - Verbosity analysis
+  <Step title="Prompt Difficulty Scoring">
+    Not all prompts are equally useful for distinguishing model quality. A prompt like "say hello" produces nearly identical outputs from any capable model. A prompt that stress-tests reasoning or instruction-following produces a much more informative vote.
+
+    We are building an automatic difficulty scorer that estimates how discriminative a prompt is likely to be, and weights votes accordingly in ELO calculations.
+  </Step>
+
+  <Step title="Multi-Turn Conversation Comparisons">
+    Current comparisons are single-turn — one prompt, two responses, one vote. Multi-turn comparison lets users evaluate model behavior over an extended conversation, capturing qualities like:
+    - Context retention across messages
+    - Consistency of tone and persona
+    - Recovery from user-introduced errors
+    - Willingness to update prior conclusions
+
+    This is a significantly harder UX problem than single-turn and will require redesigning the voting interface.
   </Step>
 
   <Step title="Team Workspaces">
-    Collaborative features for teams to run custom benchmarks and share private comparisons.
+    Organizations want to run structured evaluation campaigns — sets of pre-defined prompts, run against a specific set of models, with aggregated results across their team.
+
+    Team Workspaces will support:
+    - Shared prompt libraries
+    - Private leaderboards scoped to a workspace
+    - Exportable results for reporting
+    - Role-based access (admin, contributor, viewer)
   </Step>
 
   <Step title="Custom Evaluation Rubrics">
-    Define your own criteria for "better" — accuracy, speed, conciseness, or safety — for specialized benchmarks.
+    Right now, every vote is binary: Model A is better, Model B is better, or it's a tie. Custom rubrics will allow structured evaluation across multiple axes simultaneously:
+    - Accuracy (factual correctness)
+    - Conciseness (did it over-explain?)
+    - Safety (did it refuse appropriately or refuse unnecessarily?)
+    - Instruction adherence (did it follow the format specified?)
+
+    Each axis gets its own score, producing a richer evaluation profile per comparison.
+  </Step>
+
+  <Step title="Comparative Response Diffing">
+    A tool for visually diffing two model responses to the same prompt — surfacing word choice differences, structure differences, and length differences. Useful for researchers and developers who want to understand *where* models diverge, not just *that* they do.
   </Step>
 </Steps>
+
+---
+
+## On the Horizon
+
+These are further out but actively being thought through:
+
+<AccordionGroup>
+  <Accordion title="Public API for Developers">
+    A developer-facing REST API to submit comparisons, retrieve leaderboard data, and integrate Arena results into external tooling. This is planned but not yet available. The API exists internally and will be published once the authentication, rate limiting, and developer experience meet our standards.
+
+    When available, it will be documented here.
+  </Accordion>
+
+  <Accordion title="Automated Regression Testing for Models">
+    When a model releases a new version, does it actually perform better in practice? We want Arena to be able to run structured regression comparisons — same prompt sets, before and after a model update — and surface whether the new version wins, loses, or is statistically indistinguishable from the prior one.
+  </Accordion>
+
+  <Accordion title="Adversarial Prompt Library">
+    A curated set of prompts specifically designed to probe known failure modes: hallucination risk, sycophancy, refusal calibration, and instruction conflicts. These will be run periodically across the model roster and published as a living benchmark.
+  </Accordion>
+
+  <Accordion title="Voice & Multimodal Comparisons">
+    As frontier models expand into voice and image-understanding, so will the Arena. Evaluating a model's ability to interpret an image or the naturalness of its spoken output requires new evaluation infrastructure — but the blind comparison methodology applies directly.
+  </Accordion>
+
+  <Accordion title="Researcher Data Export">
+    Anonymized, aggregated vote data exported in structured formats for academic research. We believe the data we are collectively generating has value beyond the leaderboard — it is a large-scale record of human preference over AI outputs, with controlled experimental conditions.
+  </Accordion>
+</AccordionGroup>
+
+---
 
 ## Recently Shipped
 
 <AccordionGroup>
   <Accordion title="Arena Battle v2.0">
-    - Full blind comparison mode
-    - Real-time ELO leaderboards
-    - Enhanced voting interface
+    - Full blind comparison mode — model identities hidden until post-vote
+    - Real-time ELO leaderboard with live ranking updates
+    - Parallel response generation — both models evaluated concurrently
+    - Enhanced voting interface with tie option
   </Accordion>
 
-  <Accordion title="Public API">
-    - Programmatic access to arena comparisons
-    - Standardized API for tool integration
+  <Accordion title="Latency Metrics Dashboard">
+    - Time to First Token (TTFT) tracked and displayed per response
+    - Tokens per Second (TPS) visible alongside every comparison
+    - Latency separated from quality scoring so speed doesn't bias votes
   </Accordion>
 
-  <Accordion title="Shared Conversations">
-    - Public links for sharing interesting threads
-    - Privacy controls for sensitive comparisons
+  <Accordion title="Shared Conversation Links">
+    - Shareable public links for noteworthy comparisons
+    - Visibility controls: public, unlisted, or private
+    - Persistent thread storage tied to user accounts
+  </Accordion>
+
+  <Accordion title="Streaming Responses">
+    - Token-by-token response streaming for both models simultaneously
+    - Real-time display eliminates waiting before reading
+    - Cancellation support — users can stop a generation mid-stream
   </Accordion>
 </AccordionGroup>
