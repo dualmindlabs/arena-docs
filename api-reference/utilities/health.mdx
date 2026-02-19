@@ -1,50 +1,49 @@
 ---
-title: "GET /health"
-api: "GET /health"
-description: "API health check endpoint"
+title: "Health Check"
+api: "GET https://api.dualmind.ai/v1/health"
+description: "Verify the API is reachable and operational."
 ---
 
 ## Authentication
 
-**Not Required**: `[AllowAnonymous]` (Line 13)
+No authentication required. This endpoint is publicly accessible.
 
 ## Response
 
 <ResponseField name="status" type="string">
-  Always `"healthy"` (Line 18)
+  `"healthy"` when the API is operational.
 </ResponseField>
 
 <ResponseField name="message" type="string">
-  Always `"DualMind API is running"` (Line 19)
+  A human-readable status message.
 </ResponseField>
 
 <ResponseField name="timestamp" type="string">
-  ISO8601 UTC timestamp at response generation (Line 20)
+  ISO 8601 UTC timestamp.
 </ResponseField>
 
 <ResponseField name="version" type="string">
-  API version (hardcoded `"1.0.0"`, Line 21)
+  Current API version.
 </ResponseField>
 
 <RequestExample>
 ```bash cURL
-curl -X GET 'http://localhost:5079/health'
+curl https://api.dualmind.ai/v1/health
 ```
 
 ```javascript JavaScript
-const response = await fetch('http://localhost:5079/health');
+const response = await fetch('https://api.dualmind.ai/v1/health');
 const health = await response.json();
 ```
 
 ```python Python
 import requests
-response = requests.get('http://localhost:5079/health')
-health = response.json()
+health = requests.get('https://api.dualmind.ai/v1/health').json()
 ```
 </RequestExample>
 
 <ResponseExample>
-```json 200 Success
+```json 200 OK
 {
   "status": "healthy",
   "message": "DualMind API is running",
@@ -53,49 +52,3 @@ health = response.json()
 }
 ```
 </ResponseExample>
-
-## Side Effects
-
-**No Database Operations**: Static response
-
-**No Validation**: Always returns 200 OK
-
-## Behavioral Guarantees
-
-**Always Succeeds**: Cannot fail (no database/external dependencies)
-
-**Response Time**: Sub-millisecond (no I/O operations)
-
-**Idempotency**: YES (identical response every time, except timestamp)
-
-## Aliases
-
-**Identical Endpoint**: `GET /api/health` (Lines 26-38)
-- Same response format
-- Same authentication requirements
-- Frontend compatibility alias (Line 25 comment)
-
-## Use Cases
-
-**Health Monitoring**:
-- Load balancer health checks
-- Kubernetes liveness/readiness probes
-- Uptime monitoring services
-
-**API Discovery**:
-- Verify API is reachable
-- Check API version
-
-## Error Conditions
-
-**None**: Endpoint cannot fail
-
-**No Exceptions**: No try-catch block (Lines 14-23)
-
-## Performance
-
-**Cache-Safe**: Response can be cached briefly (timestamp changes)
-
-**Load**: Negligible CPU/memory impact
-
-**Concurrent Requests**: Fully thread-safe

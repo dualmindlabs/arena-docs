@@ -1,246 +1,71 @@
 ---
 title: "Frequently Asked Questions"
-sidebarTitle: FAQ
-description: "Common questions about DualMind Lab — model comparisons, API usage, authentication, deployment, and troubleshooting."
-keywords: ["FAQ", "frequently asked questions", "troubleshooting", "help", "support"]
+sidebarTitle: "FAQ"
+description: "Common questions about DualMind Arena — model comparisons, voting mechanics, and API usage."
+keywords: ["FAQ", "help", "support", "troubleshooting", "API limits"]
 ---
 
 # Frequently Asked Questions
 
-Find answers to common questions about DualMind Lab's AI model comparison platform.
+Find answers to common questions about the DualMind Arena platform.
 
-## Getting Started
+## General
 
 <AccordionGroup>
-  <Accordion title="What is DualMind Lab?">
-    DualMind Lab is an AI model comparison platform that lets you compare AI models side-by-side in "Arena Battle" mode or chat with individual models. It supports threaded conversations, voting on model responses, and public sharing of conversations.
-  </Accordion>
-  
-  <Accordion title="Do I need an account to use DualMind?">
-    No — you can browse public shared threads without an account. However, to create threads, vote on comparisons, or access the API, you need to sign up via Supabase Auth.
-  </Accordion>
-  
-  <Accordion title="Which AI models are supported?">
-    DualMind supports models from Groq (Llama 3.3, Mixtral) and Bytez. The admin can add new models dynamically through the admin panel.
+  <Accordion title="What is DualMind Arena?">
+    DualMind Arena is a crowdsourced AI evaluation platform. It allows you to compare two AI models side-by-side using the same prompt. By voting on the better response without knowing the model names beforehand ("blind testing"), the community creates an unbiased leaderboard of model quality.
   </Accordion>
   
   <Accordion title="Is DualMind free to use?">
-    Yes — the platform is currently free for end users. API rate limits apply based on your authentication tier.
+    Yes! The platform is free for public use to help democratize AI evaluation.
+  </Accordion>
+  
+  <Accordion title="Why blind comparison?">
+    Knowing a model's name (e.g., "GPT-4" or "Claude 3") creates subconscious bias. Blind comparison forces you to evaluate the *content* of the response, not the *brand* of the model, leading to more accurate quality data.
   </Accordion>
 </AccordionGroup>
 
-## API & Authentication
+## Comparisons & Voting
 
 <AccordionGroup>
-  <Accordion title="How do I authenticate API requests?">
-    All API requests (except public thread viewing) require a Bearer token in the Authorization header:
-    
-    ```bash
-    Authorization: Bearer <jwt_token>
-    ```
-    
-    Obtain the JWT token from Supabase Auth after user login.
+  <Accordion title="How are models selected?">
+    In **Random Mode**, the system selects two different models from the active pool at random.
+    In **Topper Mode**, the current highest-ranked model is paired against a random challenger.
+    In **Manual Mode**, you explicitly choose which two models to compare.
   </Accordion>
   
-  <Accordion title="What is the API base URL?">
-    The production API base URL is:
-    
-    ```
-    https://api.dualmindlab.tech
-    ```
-    
-    All endpoints are prefixed with `/api/` (e.g., `/api/arena/chat`).
+  <Accordion title="How is the leaderboard calculated?">
+    We use an ELO rating system similar to chess. When Model A beats Model B, Model A gains points and Model B loses points. The amount of points depends on the rating difference — beating a high-rated model awards more points than beating a low-rated one.
   </Accordion>
   
-  <Accordion title="How do I get an API key?">
-    DualMind uses JWT authentication via Supabase, not API keys. Users authenticate through the frontend login flow, and the Supabase client provides the JWT token for API calls.
+  <Accordion title="Can I change my vote?">
+    Votes are final once submitted to ensure the integrity of the leaderboard and prevent manipulation.
+  </Accordion>
+</AccordionGroup>
+
+## API & Integration
+
+<AccordionGroup>
+  <Accordion title="How do I access the API?">
+    You can attain an API token by logging into the web interface. This token allows you to submit prompts, retrieve comparisons, and vote programmatically. See the [API Reference](/api-reference/introduction) for details.
   </Accordion>
   
   <Accordion title="Is there a rate limit?">
-    Yes — rate limits vary by endpoint and authentication status:
-    - Authenticated users: Higher limits
-    - Public endpoints: Stricter limits
-    - Streaming endpoints: Connection-based limits
+    Yes, to ensure fair usage for everyone, the API has rate limits. Authenticated users have higher limits than anonymous usage.
+  </Accordion>
+  
+  <Accordion title="Can I use DualMind for commercial benchmarking?">
+    Please contact us for enterprise licenses or commercial usage of the comparison data and API.
   </Accordion>
 </AccordionGroup>
 
-## Model Comparisons
-
-<AccordionGroup>
-  <Accordion title="What is Arena Battle mode?">
-    Arena Battle mode compares two AI models side-by-side with the same prompt. Both models respond simultaneously, and you can vote on which response is better. This creates a leaderboard of model performance.
-  </Accordion>
-  
-  <Accordion title="How are models selected for comparison?">
-    Three selection strategies are available:
-    - **Random**: Two random models from the active pool
-    - **Topper**: Top-performing model vs random challenger
-    - **Manual**: You specify both models explicitly
-  </Accordion>
-  
-  <Accordion title="What happens if one model fails?">
-    If one model fails during a comparison, you'll receive a partial result with only the successful model's response. Both models failing returns an error.
-  </Accordion>
-  
-  <Accordion title="How are model rankings calculated?">
-    Rankings use win rate: `(wins / total_appearances) * 100`. The `model_stats` view aggregates votes from the `model_votes` table.
-  </Accordion>
-</AccordionGroup>
-
-## Threads & Sharing
-
-<AccordionGroup>
-  <Accordion title="What is a thread?">
-    A thread is a persistent conversation that stores messages, model responses, and metadata. Threads can be private (default) or shared publicly.
-  </Accordion>
-  
-  <Accordion title="How do I share a conversation?">
-    Update the thread's visibility to `public`:
-    
-    ```bash
-    PATCH /api/threads/{threadId}/visibility
-    {"visibility": "public"}
-    ```
-    
-    Anyone with the thread ID can then view it at `/share/{threadId}`.
-  </Accordion>
-  
-  <Accordion title="Can I delete a thread?">
-    Yes — authenticated users can delete their own threads:
-    
-    ```bash
-    DELETE /api/threads/{threadId}
-    ```
-    
-    Admin users can delete any thread.
-  </Accordion>
-  
-  <Accordion title="Are messages ordered?">
-    Yes — messages are ordered by `created_at` timestamp. Each message includes metadata about which model generated it.
-  </Accordion>
-</AccordionGroup>
-
-## Streaming & Real-time
-
-<AccordionGroup>
-  <Accordion title="Does DualMind support streaming responses?">
-    Yes — use the SSE streaming endpoint:
-    
-    ```bash
-    GET /api/arena/stream?prompt=Hello&model=llama-3.3-70b-versatile
-    ```
-    
-    The stream delivers tokens as they're generated by the AI model.
-  </Accordion>
-  
-  <Accordion title="What format are streamed responses?">
-    Server-Sent Events (SSE) format with JSON data:
-    
-    ```
-    data: {"token": "Hello", "model": "llama-3.3-70b-versatile"}
-    ```
-  </Accordion>
-</AccordionGroup>
-
-## Deployment & Self-Hosting
-
-<AccordionGroup>
-  <Accordion title="Can I self-host DualMind?">
-    Yes — DualMind is closed source but enterprise licenses include self-hosting options. You'll need:
-    - .NET 8 runtime for backend
-    - PostgreSQL database (Supabase recommended)
-    - Static file hosting for frontend
-    - Cloudflare Workers or similar for admin panel
-
-    Contact us for enterprise licensing and self-hosting setup.
-  </Accordion>
-  
-  <Accordion title="What are the deployment options?">
-    | Component | Recommended Platform | Alternative |
-    |-----------|---------------------|-------------|
-    | Backend | Azure App Service | AWS, GCP, Docker |
-    | Frontend | Cloudflare Workers | Vercel, Netlify |
-    | Database | Supabase | Self-hosted PostgreSQL |
-    | Admin | Cloudflare Workers | Any static host |
-  </Accordion>
-  
-  <Accordion title="How do I add a new AI model?">
-    1. Add the provider to the `providers` table
-    2. Add the model to the `ai_models` table with `status='active'`
-    3. Add API keys to `provider_api_keys`
-    
-    The model will immediately enter the selection pool.
-  </Accordion>
-</AccordionGroup>
-
-## Troubleshooting
-
-<AccordionGroup>
-  <Accordion title="Why is my request returning 401 Unauthorized?">
-    Common causes:
-    - Missing or expired JWT token
-    - Incorrect `Authorization: Bearer <token>` format
-    - Token not obtained from Supabase Auth
-    
-    Verify the token is valid by checking the Supabase session.
-  </Accordion>
-  
-  <Accordion title="Why is the streaming endpoint not working?">
-    Check:
-    - SSE client implementation (EventSource in JS)
-    - Query parameters are URL-encoded
-    - Model name is correct and active
-    - No ad-blockers interfering with SSE
-  </Accordion>
-  
-  <Accordion title="Database connection errors?">
-    Verify:
-    - `SUPABASE_URL` is correct
-    - `SUPABASE_SERVICE_ROLE_KEY` has service role permissions
-    - Database is accessible from backend IP
-    - Required tables exist in `public` schema
-  </Accordion>
-</AccordionGroup>
-
-## Admin & Management
-
-<AccordionGroup>
-  <Accordion title="How do I access the admin panel?">
-    The admin panel is a separate Cloudflare Workers deployment. Access it at your configured admin URL (e.g., `https://admin.dualmindlab.tech`).
-  </Accordion>
-  
-  <Accordion title="What can admin users do?">
-    Admin users have full CRUD access to:
-    - Users and user roles
-    - AI models (add, update, activate/deactivate)
-    - Thread messages (view, delete)
-    - Comparisons and votes (analytics)
-    - Providers and API keys
-  </Accordion>
-  
-  <Accordion title="How do I make a user an admin?">
-    Update the user's role via the admin API:
-    
-    ```bash
-    PUT /api/admin/users/{userId}/role
-    {"role": "admin"}
-    ```
-  </Accordion>
-</AccordionGroup>
-
-## Still Need Help?
+## Still have questions?
 
 <CardGroup cols={2}>
-  <Card title="GitHub Issues" icon="github" href="https://github.com/HarshBhanushali07">
-    Report bugs or request features
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Technical documentation for developers
   </Card>
-  <Card title="Live Demo" icon="play" href="https://arena.dualmindlab.tech">
-    Try the platform
-  </Card>
-  <Card title="API Reference" icon="code" href="/api-reference/chat/single-chat">
-    Explore API endpoints
-  </Card>
-  <Card title="Documentation" icon="book" href="/welcome">
-    Browse all docs
+  <Card title="Live Platform" icon="play" href="https://arena.dualmindlab.tech">
+    Experience the arena yourself
   </Card>
 </CardGroup>

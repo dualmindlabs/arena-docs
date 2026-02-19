@@ -1,192 +1,71 @@
 ---
-title: "GET /api/settings/feature-flag/{key}"
-api: "GET /api/settings/feature-flag/{key}"
-description: "Get feature flag status"
+title: "Feature Flags"
+api: "GET https://api.dualmind.ai/v1/settings/feature-flag/{key}"
+description: "Check whether a named platform feature is currently enabled."
 ---
 
 ## Authentication
 
-**Not Required**: `[AllowAnonymous]` (Line 31)
-
-Feature flags are public
+No authentication required.
 
 ## Path Parameters
 
 <ParamField path="key" type="string" required>
-  Feature flag key
+  The feature flag key to check.
 
-  **Validation** (Lines 36-44):
-  ```csharp
-  if (string.IsNullOrWhiteSpace(key)) {
-      return BadRequest("Feature flag key is required");
-  }
-  ```
-  
-  **Known Keys**:
-  - `public_sharing`: Enables public/unlisted thread access
-  
-  **Unknown Keys**: Default behavior not enforced by server contract (service returns false assumed)
+  **Known keys**:
+  - `public_sharing` — Controls whether threads can be shared publicly or via link
 </ParamField>
 
 ## Response
 
 <ResponseField name="key" type="string">
-  Echo of requested feature flag key (Line 50)
+  Echo of the requested feature flag key.
 </ResponseField>
 
 <ResponseField name="enabled" type="boolean">
-  Feature flag status (Line 51)
-  
-  **Values**:
-  - `true`: Feature enabled
-  - `false`: Feature disabled or doesn't exist
+  `true` if the feature is enabled, `false` otherwise (including for unknown keys).
 </ResponseField>
 
 <RequestExample>
 ```bash cURL
-curl -X GET 'http://localhost:5079/api/settings/feature-flag/public_sharing'
+curl https://api.dualmind.ai/v1/settings/feature-flag/public_sharing
 ```
 
 ```javascript JavaScript
 const response = await fetch(
-  'http://localhost:5079/api/settings/feature-flag/public_sharing'
+  'https://api.dualmind.ai/v1/settings/feature-flag/public_sharing'
 );
 const flag = await response.json();
 ```
 
 ```python Python
 import requests
-response = requests.get(
-    'http://localhost:5079/api/settings/feature-flag/public_sharing'
-)
-flag = response.json()
+flag = requests.get(
+    'https://api.dualmind.ai/v1/settings/feature-flag/public_sharing'
+).json()
 ```
 </RequestExample>
 
 <ResponseExample>
-```json 200 Success (Enabled)
+```json 200 OK (Enabled)
 {
   "key": "public_sharing",
   "enabled": true
 }
 ```
 
-```json 200 Success (Disabled)
+```json 200 OK (Disabled or Unknown)
 {
   "key": "public_sharing",
   "enabled": false
 }
 ```
 
-```json 400 INVALID_REQUEST
+```json 400 Bad Request
 {
-  "success": false,
-  "error": "Feature flag key is required",
-  "code": "INVALID_REQUEST"
-}
-```
-
-```json 500 SETTINGS_ERROR
-{
-  "success": false,
-  "error": "Database query failed",
-  "code": "SETTINGS_ERROR"
+  "error": "INVALID_REQUEST",
+  "message": "Feature flag key is required."
 }
 ```
 </ResponseExample>
-
-## Side Effects
-
-**Database Reads** (Line 46):
-```csharp
-var enabled = await _settingsService.GetFeatureFlagAsync(key);
-```
-
-**Tables Read**:
-- `system_settings` table
-
-**Query**:
-```sql
-SELECT value FROM system_settings WHERE key = {key}
-```
-
-**No Database Writes**: Read-only endpoint
-
-## Authorization
-
-**Public Access**: No authentication required
-
-**Security**: Feature flag keys/values visible to anyone
-
-## Permissions
-
-**Who Can Read**: Anyone (unauthenticated access allowed)
-
-## Edge Cases
-
-1. **Empty key**: 400 error (Lines 36-44)
-2. **Whitespace-only key**: 400 error (Lines 36-44)
-3. **Unknown key**: Returns `false` (service-level default, not enforced by server contract)
-4. **Null key**: 400 error
-5. **Case sensitivity**: Not enforced by server contract (service-dependent)
-
-## Error Conditions
-
-| Code | HTTP | Cause | Controller Line |
-|------|------|-------|----------------|
-| `INVALID_REQUEST` | 400 | Key null/empty/whitespace | 36-44 |
-| `SETTINGS_ERROR` | 500 | Service exception | 54-62 |
-
-**Exception Handling** (Lines 54-62):
-```csharp
-catch (Exception ex) {
-    return StatusCode(500, new { error = ex.Message, code = "SETTINGS_ERROR" });
-}
-```
-
-## Behavioral Guarantees
-
-**Default Value**: `false` for unknown keys (service-level, not enforced by server contract)
-
-**Idempotency**: YES (same key always returns same value until changed)
-
-**Cache-Safe**: Can be cached (feature flags change infrequently)
-
-## Known Feature Flags
-
-**public_sharing**:
-- Controls thread visibility for public/unlisted threads
-- Used by ThreadsController (Lines 134, 216)
-- When `false`: All threads owner-only
-- When `true`: Public/unlisted threads accessible anonymously
-
-**Future Flags**: Additional flags not enforced by server contract
-
-## Use Cases
-
-**Frontend Configuration**:
-- Check if features should be shown/hidden
-- Enable/disable UI components based on flags
-
-**Backend Decisions**:
-- ThreadsController checks `public_sharing` for access control
-
-**A/B Testing**: Feature flags can enable gradual rollouts
-
-## Performance
-
-**Query Complexity**: Single SELECT by primary key
-
-**Index**: `system_settings.key` should be indexed
-
-**Response Time**: Sub-10ms (simple key-value lookup)
-
-**Caching**: Not documented in controller (service may cache)
-
-## Security Implications
-
-**Public Visibility**: Feature flag names and values exposed
-- No sensitive data should be in feature flags
-- Use for boolean toggles only
-
-**No Rate Limiting**: Public endpoint, could be abused (not enforced by server contract)

@@ -1,307 +1,86 @@
 ---
-title: "PATCH /api/threads/{id}/visibility"
-api: "PATCH /api/threads/{id}/visibility"
-description: "Update thread visibility (private/public/unlisted)"
+title: "Share Thread"
+api: "PATCH https://api.dualmind.ai/v1/threads/{id}/share"
+description: "Update the visibility setting of a conversation thread."
 ---
-
-<Warning>
-**Note**: This endpoint was previously documented as `GET /api/threads/{id}/share` but the actual backend implementation is `PATCH /api/threads/{id}/visibility` (Lines 338-420 in ThreadsController.cs). The `/share` endpoint does NOT exist in the current backend.
-</Warning>
 
 ## Authentication
 
-**Required**: JWT Bearer token
-
-**JWT Claims Extraction** (Lines 346-350):
-```csharp
-sub | ClaimTypes.NameIdentifier → User UUID (required)
-```
+<ParamField header="Authorization" type="string" required>
+  ```
+  Authorization: Bearer dm_test_xxxxxxxxxxxx
+  ```
+</ParamField>
 
 ## Path Parameters
 
 <ParamField path="id" type="string" required>
-  Thread UUID
-
-  **Format**: Valid GUID
-  
-  **Validation**: Route constraint `:guid` (Line 339)
+  The unique ID of the thread to update.
 </ParamField>
 
-## Request Body
+## Request
 
 <ParamField body="visibility" type="string" required>
-  New visibility level
-
-  **Validation** (Lines 381-400):
-  ```csharp
-  if (string.IsNullOrWhiteSpace(request?.Visibility)) {
-      return BadRequest("Visibility is required");
-  }
-  
-  var validVisibilities = new[] { "private", "public", "unlisted" };
-  if (!Array.Exists(validVisibilities, v => v == request.Visibility.ToLowerInvariant())) {
-      return BadRequest("Invalid visibility");
-  }
-  ```
-  
-  **Allowed Values**:
-  - `"private"`: Owner-only access
-  - `"public"`: Public access when `public_sharing` feature enabled
-  - `"unlisted"`: Accessible via direct link when `public_sharing` feature enabled
-  
-  **Case-Insensitive**: Automatically lowercased (Line 392)
+  The new visibility setting. One of:
+  - `private` — Only you can view this thread
+  - `public` — Anyone with the link can view this thread
+  - `unlisted` — Hidden from public listings, but accessible via direct link
 </ParamField>
 
 <RequestExample>
 ```bash cURL
-curl -X PATCH 'http://localhost:5079/api/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479/visibility' \
-  -H 'Authorization: Bearer YOUR_JWT_TOKEN' \
+curl -X PATCH 'https://api.dualmind.ai/v1/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479/share' \
+  -H 'Authorization: Bearer dm_test_xxxxxxxxxxxx' \
   -H 'Content-Type: application/json' \
   -d '{"visibility": "public"}'
 ```
 
 ```javascript JavaScript
-const response = await fetch(
-  'http://localhost:5079/api/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479/visibility',
-  {
-    method: 'PATCH',
-    headers: {
-      'Authorization': `Bearer ${jwt}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      visibility: 'public'
-    })
-  }
-);
-
-const result = await response.json();
+await fetch('https://api.dualmind.ai/v1/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479/share', {
+  method: 'PATCH',
+  headers: {
+    'Authorization': 'Bearer dm_test_xxxxxxxxxxxx',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ visibility: 'public' })
+});
 ```
 
 ```python Python
 import requests
 
-response = requests.patch(
-    'http://localhost:5079/api/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479/visibility',
-    headers={
-        'Authorization': f'Bearer {jwt}',
-        'Content-Type': 'application/json'
-    },
+requests.patch(
+    'https://api.dualmind.ai/v1/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479/share',
+    headers={'Authorization': 'Bearer dm_test_xxxxxxxxxxxx'},
     json={'visibility': 'public'}
 )
-
-result = response.json()
 ```
 </RequestExample>
 
+## Response
+
+<ResponseField name="success" type="boolean">`true` if the visibility was updated.</ResponseField>
+<ResponseField name="shareUrl" type="string">A shareable link to the thread (if the thread is now `public` or `unlisted`).</ResponseField>
+
 <ResponseExample>
-```json 200 Success
+```json 200 OK
 {
   "success": true,
-  "message": "Thread visibility updated successfully",
-  "visibility": "public"
+  "shareUrl": "https://arena.dualmind.ai/share/f47ac10b-58cc-4372-a567-0e02b2c3d479"
 }
 ```
 
-```json 400 INVALID_REQUEST (Missing Visibility)
+```json 403 Forbidden
 {
-  "success": false,
-  "error": "Visibility is required",
-  "code": "INVALID_REQUEST"
+  "error": "FORBIDDEN",
+  "message": "You do not have permission to modify this thread."
 }
 ```
 
-```json 400 INVALID_REQUEST (Invalid Value)
+```json 404 Not Found
 {
-  "success": false,
-  "error": "Invalid visibility. Must be one of: private, public, unlisted",
-  "code": "INVALID_REQUEST"
-}
-```
-
-```json 401 Unauthorized
-{
-  "error": "User ID claim missing"
-}
-```
-
-```json 404 NOT_FOUND
-{
-  "success": false,
-  "error": "Thread not found",
-  "code": "NOT_FOUND"
-}
-```
-
-```json 403 FORBIDDEN
-{
-  "success": false,
-  "error": "Only the thread owner can change visibility",
-  "code": "FORBIDDEN"
-}
-```
-
-```json 500 VISIBILITY_UPDATE_ERROR
-{
-  "success": false,
-  "error": "Database update failed",
-  "code": "VISIBILITY_UPDATE_ERROR"
+  "error": "NOT_FOUND",
+  "message": "Thread not found."
 }
 ```
 </ResponseExample>
-
-## Authorization
-
-**Ownership Verification** (Lines 358-378):
-```csharp
-var thread = await _threadsService.GetThreadAsync(threadId);
-if (thread == null) {
-    return NotFound("Thread not found");
-}
-
-if (thread.UserId != userId) {
-    return StatusCode(403, "Only the thread owner can change visibility");
-}
-```
-
-**Permission Rules**:
-- ONLY thread owner can change visibility (Line 369)
-- Explicit message: "Only the thread owner can change visibility" (Line 375)
-- No delegation or admin override
-
-## Side Effects
-
-**Database Mutations** (Line 402):
-```csharp
-await _threadsService.UpdateThreadVisibilityAsync(threadId, request.Visibility);
-```
-
-**Tables Written**:
-- UPDATE `threads` SET `visibility = {request.Visibility}`, `updated_at = NOW()` WHERE `thread_id = {threadId}`
-
-**Access Control Changes**:
-- Changing TO `"private"`: Thread becomes owner-only
-- Changing TO `"public"`: Thread becomes publicly accessible (if `public_sharing` feature enabled)
-- Changing TO `"unlisted"`: Thread accessible via direct link (if `public_sharing` feature enabled)
-
-**Cascade Effects**: None
-- Existing messages/comparisons/votes unaffected
-- Thread remains in owner's thread list
-- Share URLs become invalid/valid based on new visibility
-
-## Permissions
-
-**Who Can Modify Visibility**:
-- Thread owner only
-
-**Who Cannot Modify**:
-- Other authenticated users
-- Public thread viewers
-- Admins (not documented as exception)
-
-## Visibility Semantics
-
-### `private`
-- **Access**: Owner only, always
-- **Feature Flag**: Irrelevant (owner-only regardless)
-- **Sharing**: Cannot be shared
-
-### `public`
-- **Access**: Anyone if `public_sharing = true`, owner only if `false`
-- **Discovery**: May be listed in public directories (implementation-dependent)
-- **Indexing**: May be indexed by search engines
-
-### `unlisted`
-- **Access**: Anyone with link if `public_sharing = true`, owner only if `false`
-- **Discovery**: Not listed publicly
-- **Indexing**: Implementation-dependent
-
-## Edge Cases
-
-1. **Thread doesn't exist**: 404 (Lines 359-367)
-2. **User is not owner**: 403 (Lines 369-378)
-3. **Visibility is null**: 400 (Lines 381-389)
-4. **Visibility is empty**: 400 (Lines 381-389)
-5. **Invalid visibility value**: 400 (Lines 391-400)
-6. **Case variations** (`"Public"`, `"PUBLIC"`): Accepted, lowercased (Line 392)
-7. **Same visibility as current**: Update proceeds (no change detection)
-8. **Thread currently has public viewers**: Changing to private immediately denies access
-
-## Error Conditions
-
-| Code | HTTP | Cause | Controller Line |
-|------|------|-------|----------------|
-| N/A | 401 | JWT missing or invalid | Middleware |
-| N/A | 401 | User ID claim missing | 352-355 |
-| `INVALID_REQUEST` | 400 | Visibility null/empty | 381-389 |
-| `INVALID_REQUEST` | 400 | Invalid visibility value | 391-400 |
-| `NOT_FOUND` | 404 | Thread doesn't exist | 359-367 |
-| `FORBIDDEN` | 403 | Not thread owner | 369-378 |
-| `VISIBILITY_UPDATE_ERROR` | 500 | Service exception | 411-419 |
-
-**Exception Handling** (Lines 411-419):
-```csharp
-catch (Exception ex) {
-    return StatusCode(500, new { error = ex.Message, code = "VISIBILITY_UPDATE_ERROR" });
-}
-```
-
-## Behavioral Guarantees
-
-**Atomicity**: Single UPDATE query (atomic)
-
-**Idempotency**: NOT idempotent
-- `updated_at` timestamp changes on every call
-- Even if visibility unchanged
-
-**Immediate Effect**: Visibility change takes effect immediately
-- Next GET request reflects new visibility
-- Access control updated instantly
-
-## Validation Order
-
-1. User ID from JWT (401 if missing)
-2. Thread existence (404 if not found)
-3. Ownership (403 if not owner)
-4. Visibility value validation (400 if invalid)
-5. Update execution (500 if fails)
-
-**Note**: Validation happens AFTER ownership check
-
-## Security Implications
-
-**Public Exposure Risk**:
-- Changing private → public exposes thread to world (if feature enabled)
-- No confirmation required
-- No warning for sensitive content
-
-**Privacy Downgrade**:
-- Private → public/unlisted is one-way exposure
-- Changing back to private doesn't "un-share" (content may be cached elsewhere)
-
-**Access Revocation**:
-- Changing public → private immediately denies access to non-owners
-- No grace period
-
-## Feature Flag Dependency
-
-**Depends on**: `public_sharing` feature flag
-
-**Behavior Matrix**:
-
-| Flag | Visibility | Effect on Access |
-|------|-----------|-----------------|
-| ON | private | Owner only |
-| ON | public | Public access |
-| ON | unlisted | Link-based access |
-| OFF | private | Owner only |
-| OFF | public | Owner only (flag overrides visibility) |
-| OFF | unlisted | Owner only (flag overrides visibility) |
-
-**Note**: Setting visibility to public/unlisted has NO EFFECT if `public_sharing = false`
-
-## Response Format
-
-**Success Response** (Lines 404-409):
-- Includes `visibility` field echoing normalized value (lowercased)
-- Example: Request `"PUBLIC"` → Response `"public"`

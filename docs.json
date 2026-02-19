@@ -1,81 +1,33 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "maple",
-  "name": "DualMind Lab",
-  "description": "Blind AI model comparison arena — Compare models side-by-side without bias. Enterprise-ready with self-hosting options, AI-agent optimized.",
-
+  "name": "DualMind Arena",
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg",
-    "href": "https://dualmindlab.tech"
+    "href": "https://dualmind.ai"
   },
   "favicon": "/favicon.svg",
-
   "colors": {
     "primary": "#0D9488",
     "light": "#14B8A6",
     "dark": "#0F766E"
   },
-
-  "fonts": {
-    "heading": {
-      "family": "Space Grotesk"
-    },
-    "body": {
-      "family": "Inter"
-    }
-  },
-
-  "styling": {
-    "eyebrows": "breadcrumbs",
-    "codeblocks": {
-      "theme": {
-        "light": "github-light",
-        "dark": "github-dark-dimmed"
-      }
-    }
-  },
-
-  "appearance": {
-    "default": "dark",
-    "strict": false
-  },
-
-  "background": {
-    "decoration": "grid"
-  },
-
-  "icons": {
-    "library": "lucide"
-  },
-
-  "banner": {
-    "content": "DualMind Lab v2.0 is live! [See what's new](/changelog) or [try the demo](https://arena.dualmindlab.tech)",
-    "dismissible": true
-  },
-
   "navbar": {
     "links": [
       {
-        "label": "Demo",
-        "href": "https://arena.dualmindlab.tech"
+        "label": "Arena",
+        "href": "https://arena.dualmind.ai"
       },
       {
         "label": "Blog",
-        "href": "https://github.com/HarshBhanushali07"
+        "href": "https://dualmind.ai/blog"
       }
-    ],
-    "primary": {
-      "type": "github",
-      "href": "https://github.com/HarshBhanushali07"
-    }
+    ]
   },
-
   "navigation": {
     "tabs": [
       {
         "tab": "Documentation",
-        "icon": "book-open",
         "groups": [
           {
             "group": "Getting Started",
@@ -86,236 +38,43 @@
             ]
           },
           {
-            "group": "Core Concepts",
+            "group": "Concepts",
             "pages": [
-              "concepts/overview",
-              "concepts/chat-modes",
-              "concepts/model-selection",
-              "concepts/threads",
-              "concepts/voting",
-              "concepts/streaming"
+              "concepts/how-dualmind-works",
+              "concepts/model-comparison",
+              "concepts/latency-measurement",
+              "concepts/evaluation-philosophy"
             ]
           },
           {
-            "group": "Architecture",
+            "group": "Platform",
             "pages": [
-              "architecture/overview",
-              "architecture/request-lifecycle",
-              "architecture/backend",
-              "architecture/frontend",
-              "architecture/admin",
-              "architecture/authentication",
-              "architecture/database-schema",
-              "architecture/provider-integration",
-              "architecture/data-flow",
-              "architecture/invariants"
-            ]
-          },
-          {
-            "group": "Database",
-            "pages": [
-              "database/schema",
-              "database/models"
-            ]
-          },
-          {
-            "group": "Frontend Guide",
-            "pages": [
-              "frontend/overview",
-              "frontend/components",
-              "frontend/state-management",
-              "frontend/routing"
-            ]
-          },
-          {
-            "group": "Development",
-            "pages": [
-              "development/setup",
-              "development/workflows",
-              "development/contributing",
-              "development/troubleshooting"
-            ]
-          },
-          {
-            "group": "Deployment",
-            "pages": [
-              "deployment/production",
-              "deployment/checklist",
-              "mcp"
+              "roadmap",
+              "changelog"
             ]
           }
         ]
       },
       {
         "tab": "API Reference",
-        "icon": "code",
         "groups": [
           {
             "group": "Overview",
             "pages": [
               "api-reference/introduction"
             ]
-          },
-          {
-            "group": "Chat & Arena",
-            "pages": [
-              "api-reference/chat/single-chat",
-              "api-reference/chat/dual-chat",
-              "api-reference/chat/streaming"
-            ]
-          },
-          {
-            "group": "Threads",
-            "pages": [
-              "api-reference/threads/list-threads",
-              "api-reference/threads/create-thread",
-              "api-reference/threads/get-thread",
-              "api-reference/threads/get-messages",
-              "api-reference/threads/update-thread",
-              "api-reference/threads/share-thread",
-              "api-reference/threads/delete-thread"
-            ]
-          },
-          {
-            "group": "Voting & Stats",
-            "pages": [
-              "api-reference/voting/submit-vote",
-              "api-reference/voting/get-stats"
-            ]
-          },
-          {
-            "group": "Models & Users",
-            "pages": [
-              "api-reference/models/list-models",
-              "api-reference/users/sync-user"
-            ]
-          },
-          {
-            "group": "Utilities",
-            "pages": [
-              "api-reference/utilities/health",
-              "api-reference/utilities/feature-flags",
-              "api-reference/utilities/speech"
-            ]
-          },
-          {
-            "group": "Admin API",
-            "pages": [
-              "api-reference/admin/dashboard",
-              "api-reference/admin/users",
-              "api-reference/admin/models",
-              "api-reference/admin/comparisons",
-              "api-reference/admin/votes",
-              "api-reference/admin/providers"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Changelog",
-        "icon": "clock",
-        "groups": [
-          {
-            "group": "Changelog",
-            "pages": [
-              "changelog",
-              "roadmap"
-            ]
           }
         ]
       }
     ]
   },
-
   "footer": {
     "socials": {
-      "github": "https://github.com/HarshBhanushali07",
-      "x": "https://x.com/dualmindtech",
-      "linkedin": "https://linkedin.com/company/dualmindlab"
-    },
-    "links": [
-      {
-        "header": "Product",
-        "items": [
-          { "label": "Live Demo", "href": "https://arena.dualmindlab.tech" },
-          { "label": "Roadmap", "href": "/roadmap" },
-          { "label": "Changelog", "href": "/changelog" }
-        ]
-      },
-      {
-        "header": "Developers",
-        "items": [
-          { "label": "API Reference", "href": "/api-reference/introduction" },
-          { "label": "GitHub", "href": "https://github.com/HarshBhanushali07" },
-          { "label": "Contributing", "href": "/development/contributing" }
-        ]
-      },
-      {
-        "header": "Resources",
-        "items": [
-          { "label": "Documentation", "href": "/welcome" },
-          { "label": "FAQ", "href": "/faq" },
-          { "label": "MCP Server", "href": "/mcp" }
-        ]
-      }
-    ]
+      "x": "https://x.com/dualmindai",
+      "github": "https://github.com/dualmind-labs"
+    }
   },
-
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "cursor",
-      "mcp"
-    ]
-  },
-
-  "search": {
-    "prompt": "Search DualMind Lab docs..."
-  },
-
   "seo": {
-    "metatags": {
-      "og:site_name": "DualMind Lab Documentation",
-      "og:type": "website",
-      "twitter:card": "summary_large_image",
-      "twitter:site": "@dualmindtech"
-    },
     "indexing": "navigable"
-  },
-
-  "api": {
-    "openapi": "/api-reference/openapi.json",
-    "playground": {
-      "display": "interactive"
-    },
-    "examples": {
-      "languages": ["bash", "javascript", "python", "go", "java"]
-    }
-  },
-
-  "integrations": {
-    "telemetry": {
-      "enabled": true
-    }
-  },
-
-  "redirects": [
-    {
-      "source": "/docs",
-      "destination": "/welcome",
-      "permanent": true
-    }
-  ],
-
-  "errors": {
-    "404": {
-      "redirect": false,
-      "title": "Lost in the Arena?",
-      "description": "This page doesn't exist. Try [searching](/welcome) or return to the [homepage](/)."
-    }
   }
 }

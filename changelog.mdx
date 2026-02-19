@@ -1,99 +1,45 @@
 ---
 title: "Changelog"
 sidebarTitle: "Changelog"
-description: "Latest updates, releases, and improvements to DualMind Lab — the blind AI model comparison arena."
-keywords: ["changelog", "updates", "releases", "version history", "DualMind"]
+description: "Latest updates and releases for DualMind Arena."
+keywords: ["changelog", "updates", "releases", "history"]
 ---
 
 # Changelog
 
-All notable changes to DualMind Lab are documented here.
+Stay up to date with the latest improvements to DualMind Arena.
 
 <Update date="2026-02-07" version="2.0.0">
-  ## World-Class Documentation & AI Agent Support
+  ## Arena 2.0 Launch
 
-  ### New Features
-  - Interactive API playground with OpenAPI 3.0 specification
-  - AI-agent optimized documentation with MCP server integration
-  - Contextual menu — send any page to ChatGPT, Claude, or Perplexity
-  - Comprehensive FAQ with 20+ questions
-  - Product roadmap and contributing guide
-  - Multi-language code examples (cURL, JavaScript, Python, Go, Java)
-  - 12+ Mermaid architecture and data-flow diagrams
+  Major platform upgrade delivering a comprehensive blind comparison experience.
 
-  ### Improvements
-  - Enhanced admin panel with full CRUD for all entities
-  - Provider health tracking and API key rotation
-  - Improved error messages with correlation IDs
-  - Better thread visibility controls (public, unlisted, private)
-  - Custom fonts (Space Grotesk headings, Inter body)
-  - Dark mode optimized with grid background
+  ### Features
+  - **Interactive API Playground**: Test API endpoints directly from the documentation.
+  - **Community Leaderboard**: Real-time ranking of models based on thousands of user votes.
+  - **Enhanced Sharing**: Share specific comparisons or entire conversation threads with public links.
+  - **Mobile Optimization**: Fully responsive design for voting on the go.
 
   ### Documentation
-  - Complete `docs.json` rewrite with all Mintlify features
-  - SEO meta tags on every page
-  - `skills.md` and `llms.txt` for AI agent context
-  - Deployment checklist with verification steps
+  - Complete rewrite of public documentation
+  - New guides for "How it Works" and "Model Comparison"
 </Update>
 
-<Update date="2025-01-15" version="1.2.0">
-  ## Topper Mode & Thread Sharing
+<Update date="2025-01-15" version="1.5.0">
+  ## Topper Mode & Analytics
 
-  ### New Features
-  - **Topper selection mode** — pairs top-performing model against random challenger
-  - **Thread sharing** — public/unlisted visibility for conversations
-  - **Feature flags** — runtime configuration via `system_settings` table
-  - **Text-to-speech** — Groq-powered speech synthesis endpoint
-
-  ### Bug Fixes
-  - Fixed user sync race condition on thread creation
-  - Improved fallback chain reliability (3-tier: primary → Groq alt → Bytez)
-  - Fixed CORS handling for Cloudflare Worker proxy
-  - Resolved vote counting for tie and both-bad choices
-
-  ### Migration
-
-  <Accordion title="Database migration required">
-    ```sql filename="migration-v1.2.0.sql"
-    ALTER TABLE threads ADD COLUMN IF NOT EXISTS visibility VARCHAR(20) DEFAULT 'private';
-
-    CREATE TABLE IF NOT EXISTS system_settings (
-      key VARCHAR(100) PRIMARY KEY,
-      value TEXT NOT NULL,
-      updated_at TIMESTAMPTZ DEFAULT NOW()
-    );
-
-    INSERT INTO system_settings (key, value)
-    VALUES ('public_sharing', 'true')
-    ON CONFLICT DO NOTHING;
-    ```
-  </Accordion>
+  ### Features
+  - **Topper Mode**: Challenge the current #1 model against random challengers.
+  - **Text-to-Speech**: Listen to model responses (accessibility feature).
+  - **Improved Thread Management**: Better organization for your conversation history.
 </Update>
 
-<Update date="2024-12-01" version="1.1.0">
-  ## Arena Mode & Voting System
+<Update date="2024-12-01" version="1.0.0">
+  ## Public Beta
 
-  ### New Features
-  - **Dual-chat arena mode** — parallel model execution with blind comparison
-  - **Voting system** — left, right, tie, and both-bad options
-  - **Model leaderboard** — win/loss statistics and rankings
-  - **SSE streaming** — real-time token streaming for single-chat
-
-  ### Infrastructure
-  - Cloudflare Workers deployment for frontend and admin
-  - Azure App Service deployment for backend
-  - Supabase PostgreSQL with service role access
-  - JWT authentication with HS256 validation
-</Update>
-
-<Update date="2024-10-15" version="1.0.0">
-  ## Initial Release
-
-  First public release of DualMind Lab.
-
-  - Single-chat endpoint with Groq provider
-  - Thread and message persistence
-  - User authentication via Supabase Auth (Google OAuth)
-  - Admin panel with basic CRUD operations
-  - Health check and ping endpoints
+  Initial public release of DualMind Arena.
+  
+  - **Dual Chat**: Compare two models side-by-side.
+  - **Voting**: Submit preference for A or B.
+  - **Basic Accounts**: Save your history.
 </Update>

@@ -1,83 +1,54 @@
 ---
-title: "POST /api/arena/chat/stream"
-api: "POST /api/arena/chat/stream"
-description: "Stream AI model responses in real-time using Server-Sent Events. Tokens are delivered as they are generated."
-keywords: ["streaming", "SSE", "server-sent events", "real-time", "chat", "API"]
+title: "Streaming Chat"
+api: "POST https://api.dualmind.ai/v1/chat/stream"
+description: "Stream AI model responses in real-time using Server-Sent Events (SSE). Tokens are delivered as they are generated."
+keywords: ["streaming", "SSE", "real-time", "chat"]
 ---
 
 # Streaming Chat <Badge>Stable</Badge>
 
-Stream AI model responses token-by-token using <Tooltip tip="Server-Sent Events — a standard for server-to-client streaming over HTTP">SSE</Tooltip>. Ideal for real-time chat interfaces.
+Stream AI model responses token-by-token using <Tooltip tip="Server-Sent Events — a standard for server-to-client streaming over HTTP">SSE</Tooltip>. Ideal for real-time chat interfaces where you want output to appear as the model generates it.
 
 ## Authentication <Badge variant="warning">Required</Badge>
 
-## Request Body
+<ParamField header="Authorization" type="string" required>
+  ```
+  Authorization: Bearer dm_test_xxxxxxxxxxxx
+  ```
+</ParamField>
+
+## Request
 
 <ParamField body="prompt" type="string" required>
-  User message text
-
-  **Validation** (Line 452):
-  ```csharp
-  if (request == null || string.IsNullOrWhiteSpace(request.Prompt)) {
-      // Write SSE error event
-      await Response.WriteAsync($"data: {errorEvent}\\n\\n");
-      return;
-  }
-  ```
+  The prompt to send to the model.
 </ParamField>
 
 <ParamField body="model" type="string">
-  Model name or `"auto"` for random selection
-
-  **Selection Logic** (Lines 468-470):
-  ```csharp
-  var selectedModel = string.IsNullOrWhiteSpace(request.Model) || request.Model == "auto"
-      ? await _modelSelector.GetRandomModelAsync()
-      : request.Model;
-  ```
-</ParamField>
-
-<ParamField body="system" type="string">
-  System prompt for chat context
-
-  **Default**: Implementation-defined and not guaranteed (provider-specific)
-</ParamField>
-
-<ParamField body="maxTokens" type="integer">
-  Maximum tokens in response
-
-  **Provider Limits**: Model-dependent
+  A specific model ID, or `"auto"` for automatic selection.
 </ParamField>
 
 <ParamField body="temperature" type="number">
-  Sampling temperature (0.0-2.0)
-
-  **Default**: Not specified by API contract (provider-defined)
+  Sampling temperature between `0.0` and `2.0`.
 </ParamField>
 
-<ParamField body="threadId" type="string">
-  Thread UUID (not persisted in streaming mode)
-
-  **Note**: Streaming endpoints do NOT write to `thread_messages` table
+<ParamField body="maxTokens" type="integer">
+  Maximum number of tokens in the response.
 </ParamField>
 
-## Response
+## Response Format
 
-**Content-Type**: `text/event-stream` (Line 450)
+**Content-Type**: `text/event-stream`
 
-**Headers** (implicit in ASP.NET SSE):
+Each event is delivered in the SSE format:
 ```
-Content-Type: text/event-stream
-Cache-Control: no-cache
-Connection: keep-alive
+data: {json}\n\n
 ```
 
 ### Event Types
 
 <ResponseField name="ai.stream.delta" type="object">
-  Incremental text chunk (Lines 486-502)
-  
-  **Format**:
+  An incremental text chunk as the model generates its response.
+
   ```json
   {
     "object": "ai.stream.delta",
@@ -87,56 +58,44 @@ Connection: keep-alive
     }
   }
   ```
-  
-  **Emitted**: 0+ times during stream
 </ResponseField>
 
 <ResponseField name="ai.stream.done" type="object">
-  Stream completion
-  
-  **Format**:
+  Emitted once when the stream completes successfully.
+
   ```json
   {
     "object": "ai.stream.done",
     "finish_reason": "stop",
-    "usage": {
-      "totalTokens": 135
-    }
+    "usage": { "totalTokens": 135 }
   }
   ```
-  
-  **Emitted**: Once at end of successful stream
 </ResponseField>
 
 <ResponseField name="ai.error" type="object">
-  Stream error (Lines 456-463, 512-519)
-  
-  **Format**:
+  Emitted if an error occurs during streaming.
+
   ```json
   {
     "object": "ai.error",
     "code": "STREAM_ERROR",
-    "message": "Stream failed: timeout"
+    "message": "Stream interrupted."
   }
   ```
-  
-  **Error Codes**:
-  - `INVALID_REQUEST`: Prompt validation failed (Line 459)
-  - `STREAM_ERROR`: Provider or network error (Line 515)
 </ResponseField>
 
 <RequestExample>
 ```javascript JavaScript (Fetch API)
-const response = await fetch('http://localhost:5079/api/arena/chat/stream', {
+const response = await fetch('https://api.dualmind.ai/v1/chat/stream', {
   method: 'POST',
   headers: {
-    'Authorization': `Bearer ${jwt}`,
+    'Authorization': 'Bearer dm_test_xxxxxxxxxxxx',
     'Content-Type': 'application/json',
     'Accept': 'text/event-stream'
   },
   body: JSON.stringify({
     prompt: 'Explain quantum computing',
-    model: 'llama-3.3-70b-versatile'
+    model: 'llama-3.3-70b'
   })
 });
 
@@ -168,33 +127,23 @@ while (true) {
 }
 ```
 
-```javascript JavaScript (EventSource - Not Recommended)
-// EventSource doesn't support POST requests or custom headers
-// Use Fetch API with ReadableStream instead
-```
-
 ```python Python
-import requests
-import json
+import requests, json
 
 response = requests.post(
-    'http://localhost:5079/api/arena/chat/stream',
+    'https://api.dualmind.ai/v1/chat/stream',
     headers={
-        'Authorization': f'Bearer {jwt}',
+        'Authorization': 'Bearer dm_test_xxxxxxxxxxxx',
         'Content-Type': 'application/json',
         'Accept': 'text/event-stream'
     },
-    json={
-        'prompt': 'Explain quantum computing',
-        'model': 'llama-3.3-70b-versatile'
-    },
+    json={'prompt': 'Explain quantum computing'},
     stream=True
 )
 
 for line in response.iter_lines():
     if line.startswith(b'data: '):
         event = json.loads(line[6:])
-        
         if event['object'] == 'ai.stream.delta':
             print(event['delta']['text'], end='', flush=True)
         elif event['object'] == 'ai.stream.done':
@@ -204,220 +153,24 @@ for line in response.iter_lines():
 
 <ResponseExample>
 ```text SSE Stream (Success)
-data: {"object":"ai.stream.delta","delta":{"type":"output_text","text":"Quantum"}}\n\n
-data: {"object":"ai.stream.delta","delta":{"type":"output_text","text":" computing"}}\n\n
-data: {"object":"ai.stream.delta","delta":{"type":"output_text","text":" uses"}}\n\n
-data: {"object":"ai.stream.delta","delta":{"type":"output_text","text":" quantum"}}\n\n
-...
-data: {"object":"ai.stream.done","finish_reason":"stop","usage":{"totalTokens":135}}\n\n
+data: {"object":"ai.stream.delta","delta":{"type":"output_text","text":"Quantum"}}
+
+data: {"object":"ai.stream.delta","delta":{"type":"output_text","text":" computing"}}
+
+data: {"object":"ai.stream.done","finish_reason":"stop","usage":{"totalTokens":135}}
 ```
 
-```text SSE Stream (Validation Error)
-data: {"object":"ai.error","code":"INVALID_REQUEST","message":"Prompt is required"}\n\n
-```
-
-```text SSE Stream (Provider Error)
-data: {"object":"ai.stream.delta","delta":{"type":"output_text","text":"Quantum"}}\n\n
-data: {"object":"ai.error","code":"STREAM_ERROR","message":"Stream failed: timeout"}\n\n
+```text SSE Stream (Error)
+data: {"object":"ai.error","code":"INVALID_REQUEST","message":"Prompt is required"}
 ```
 </ResponseExample>
 
-## Side Effects
+## Notes
 
-**Database Mutations**: NONE for streaming endpoints
+<Note>
+Use the Fetch API with `ReadableStream` on the client side. The native `EventSource` API does not support POST requests or custom authorization headers.
+</Note>
 
-**Logging**: Internal only (not persisted to user-facing tables)
-
-**Internal Audit**: `message_logs` table write not enforced by server contract (implementation detail)
-
-## Behavior
-
-**SSE Implementation** (Lines 450, 486-502):
-```csharp
-Response.ContentType = "text/event-stream";
-
-Func<AIStreamEvent, Task> onEvent = async (e) => {
-    var json = JsonConvert.SerializeObject(e, ...);
-    await Response.WriteAsync($"data: {json}\\n\\n");
-    await Response.Body.FlushAsync();
-};
-
-await provider.StreamAsync(request, onEvent, HttpContext.RequestAborted);
-```
-
-**Key Characteristics**:
-1. **Content-Type set immediately** (Line 450)
-2. **Each event written as** `data: {json}\n\n` (Line 495)
-3. **Immediate flush** after each event (Line 496)
-4. **Cancellation token** monitors client disconnect (Line 504)
-
-**Provider Selection** (Lines 472-484):
-```csharp
-var info = _modelSelector.GetModelInfo(selectedModel);
-var providerName = info?.Provider ?? "groq";
-
-IChatProvider provider;
-try {
-    provider = _chatProviderFactory.GetProvider(providerName);
-} catch (Exception ex) {
-    provider = _chatProviderFactory.GetGroqProvider(); // Fallback
-}
-```
-
-**Client Disconnect Handling** (Line 504):
-```csharp
-HttpContext.RequestAborted // CancellationToken
-```
-- Passed to provider's `StreamAsync` method
-- Provider monitors token and terminates stream on cancellation
-- No error written to client (they already disconnected)
-
-**Error Handling** (Lines 506-525):
-```csharp
-try {
-    await provider.StreamAsync(...);
-} catch (Exception ex) {
-    // Try to write error event if stream still open
-    try {
-        await Response.WriteAsync($"data: {errorEvent}\\n\\n");
-        await Response.Body.FlushAsync();
-    } catch { /* Ignore */ }
-}
-```
-
-**Error Recovery**:
-- If stream already started, error event written
-- If stream closed (client disconnect), write attempt silently fails
-- No 500 status code returned (SSE already in progress)
-
-**JSON Serialization** (Lines 490-494):
-```csharp
-var json = JsonConvert.SerializeObject(e, new JsonSerializerSettings {
-    NullValueHandling = NullValueHandling.Ignore,
-    ContractResolver = new CamelCasePropertyNamesContractResolver()
-});
-```
-- Null values omitted
-- camelCase property names
-- Single-line JSON (no embedded newlines)
-
-## Event Lifecycle
-
-**Successful Stream**:
-```
-1. Response.ContentType set to "text/event-stream"
-2. Provider starts streaming
-3. For each chunk:
-   - ai.stream.delta event
-   - Immediate flush to client
-4. Stream completes:
-   - ai.stream.done event
-5. Connection closes
-```
-
-**Error During Stream**:
-```
-1. Response.ContentType set
-2. Provider starts streaming
-3. Several ai.stream.delta events
-4. Provider throws exception
-5. ai.error event (if stream still open)
-6. Connection closes
-```
-
-**Client Disconnect**:
-```
-1. Response.ContentType set
-2. Provider starts streaming
-3. Several ai.stream.delta events
-4. Client closes connection
-5. HttpContext.RequestAborted signaled
-6. Provider terminates stream
-7. No error event (client gone)
-```
-
-## Constraints
-
-**No Dual-Chat Streaming**: Only single-chat mode supports streaming
-
-**No Database Write**: Streaming responses NOT persisted to `thread_messages` table
-
-**Reason**: Partial streams cannot be meaningfully stored
-
-**Workaround**: Use non-streaming `/api/arena/chat` if persistence required
-
-**UTF-8 Encoding**: All events UTF-8 encoded (Line 464 decoder implicit)
-
-**Single-Line JSON**: Event payloads MUST NOT contain newlines (breaks SSE format)
-
-**Provider Support**: Only providers implementing `StreamAsync` method support streaming
-
-## SSE Format Specification
-
-**Event Format**:
-```
-data: {json}\n\n
-```
-
-**Field**:
-- `data:` prefix (required)
-- Space after colon
-- JSON object (single line)
-- `\n\n` double newline (event terminator)
-
-**Client Parsing**:
-1. Read lines until `\n\n`
-2. Extract line starting with `data: `
-3. Parse JSON from position 6 onward
-4. Handle event based on `object` field
-
-## Error Conditions
-
-| Code | Format | Cause | Controller Line |
-|------|--------|-------|----------------|
-| `INVALID_REQUEST` | SSE event | Prompt null/whitespace | 452-463 |
-| `STREAM_ERROR` | SSE event | Provider exception | 506-525 |
-| N/A | Silent | Client disconnect | 504 (token) |
-
-**No HTTP Status Codes**: Once SSE starts, errors communicated via events (status already 200)
-
-## Edge Cases
-
-1. **Empty prompt**: Error event written, stream terminates (Lines 452-463)
-2. **Client disconnect mid-stream**: Provider cancels, no error event
-3. **Provider timeout**: Exception caught, error event written if possible
-4. **Invalid model name**: Fallback to Groq provider (Lines 476-484)
-5. **JSON serialization failure**: Caught and logged, event skipped (Lines 498-501)
-6. **Stream already flushed**: Error write attempt fails silently (Lines 520-524)
-
-## Performance Characteristics
-
-**First Token Latency**: Provider-dependent
-- Groq: 100-300ms typical
-- Bytez: Higher latency
-
-**Chunk Frequency**: Provider-dependent
-- Groq: High frequency (near real-time)
-- Some providers: Batched chunks
-
-**Total Stream Time**: No timeout enforced in controller
-- Provider-level timeouts apply
-- Client can cancel anytime
-
-## Rate Limits
-
-No explicit rate limiting. Provider limits apply:
-- Groq free tier: 30 req/min
-- Streaming counts same as non-streaming
-
-**Streaming Advantage**: User sees partial response even if rate-limited mid-stream
-
-## Client Implementation Notes
-
-**Fetch API Recommended**: EventSource doesn't support POST or custom headers
-
-**Backpressure**: Client must read stream continuously or buffer will fill
-
-**Reconnection**: Not automatic, client must implement retry logic
-
-**Error Handling**: Parse `ai.error` events and display to user
+<Note>
+Streaming responses are not automatically saved to conversation threads. If you need persistence, use the standard `/v1/chat` endpoint.
+</Note>

@@ -1,444 +1,144 @@
 ---
-title: "POST /api/arena/chat"
-api: "POST /api/arena/chat"
-description: "Send a prompt to a single AI model and receive a response. Supports automatic model selection, custom system prompts, and thread persistence."
-keywords: ["chat", "single", "AI", "model", "completion", "API"]
+title: "Chat"
+api: "POST https://api.dualmind.ai/v1/chat"
+description: "Send a prompt to a single AI model and receive a response."
 ---
 
-# Single Chat <Badge>Stable</Badge>
+## Authentication
 
-Send a prompt to a single AI model. Supports automatic or manual model selection with a 3-tier fallback chain.
+<ParamField header="Authorization" type="string" required>
+  ```
+  Authorization: Bearer dm_test_xxxxxxxxxxxx
+  ```
+</ParamField>
 
-## Authentication <Badge variant="warning">Required</Badge>
-
-**JWT Claims Extraction** (Controller Lines 154-166):
-```csharp
-sub | ClaimTypes.NameIdentifier → User UUID (required)
-email | ClaimTypes.Email → User email
-full_name | name | ClaimTypes.Name → Display name
-```
-
-## Request Body
+## Request
 
 <ParamField body="prompt" type="string" required>
-  User message text
-
-  **Validation** (Line 89):
-  ```csharp
-  if (request == null || string.IsNullOrWhiteSpace(request.Prompt))
-      return BadRequest("INVALID_REQUEST");
-  ```
-  
-  **Constraints**:
-  - MUST NOT be null
-  - MUST NOT be whitespace-only
-  - No max length enforced (provider-dependent)
+  The prompt to send to the model.
 </ParamField>
 
 <ParamField body="model" type="string">
-  Model name or `"auto"` for random selection
-
-  **Selection Logic** (Lines 102-108):
-  ```csharp
-  var selectedModel = string.IsNullOrWhiteSpace(request.Model) || request.Model == "auto"
-      ? await _modelSelector.GetRandomModelAsync()
-      : request.Model;
-  
-  var selectionMode = ... ? "automatic" : "manual";
-  ```
-  
-  **Behavior**:
-  - `null`, empty, `"auto"` → Random active model
-  - Specific name → Direct model usage
-</ParamField>
-
-<ParamField body="system" type="string">
-  System prompt (maps internally to `request.System`)
-
-  **Default**: Implementation-defined and not guaranteed (provider-specific)
-</ParamField>
-
-<ParamField body="maxTokens" type="integer">
-  Maximum response tokens
-
-  **Limits**: Provider-dependent (checked at provider level)
-</ParamField>
-
-<ParamField body="temperature" type="number">
-  Sampling temperature
-
-  **Range**: 0.0 (deterministic) to 2.0 (maximum creativity)
-  
-  **Default**: Not specified by API contract (provider-defined)
-</ParamField>
-
-<ParamField body="sessionId" type="string">
-  Session identifier
-
-  **Auto-generation** (Line 87):
-  ```csharp
-  var sessionId = Guid.NewGuid();
-  ```
+  A specific model ID, or `"auto"` to let the platform select one. Defaults to `"auto"`.
 </ParamField>
 
 <ParamField body="threadId" type="string">
-  Thread UUID for message persistence
-
-  **Validation** (Lines 168-174):
-  ```csharp
-  if (!string.IsNullOrEmpty(request.ThreadId)) {
-      if (Guid.TryParse(request.ThreadId, out Guid threadIdGuid)) {
-          await _threadMessagesService.LogSingleAsync(...);
-      }
-  }
-  ```
-  
-  **Behavior**: If invalid GUID or omitted, message not persisted to thread
+  Optionally associate this message with a conversation thread.
 </ParamField>
 
-## Response
+<ParamField body="temperature" type="number">
+  Sampling temperature between `0.0` and `2.0`.
+</ParamField>
 
-<ResponseField name="object" type="string">
-  Always `"ai.response"` (Line 121)
-</ResponseField>
-
-<ResponseField name="output" type="object">
-  <Expandable title="properties">
-    <ResponseField name="type" type="string">
-      Always `"message"` (Line 124)
-    </ResponseField>
-    <ResponseField name="content" type="array">
-      Array with single content part (Lines 125-128)
-      <Expandable title="Content part">
-        <ResponseField name="type" type="string">
-          Always `"output_text"`
-        </ResponseField>
-        <ResponseField name="text" type="string">
-          AI response text
-        </ResponseField>
-      </Expandable>
-    </ResponseField>
-  </Expandable>
-</ResponseField>
-
-<ResponseField name="success" type="boolean">
-  Always `true` on success (Line 130)
-</ResponseField>
-
-<ResponseField name="message" type="string">
-  AI response text (Line 131, mirrors `output.content[0].text`)
-</ResponseField>
-
-<ResponseField name="model" type="object">
-  <Expandable title="properties">
-    <ResponseField name="name" type="string">
-      Model identifier (Line 134)
-      
-      **Note**: May differ from request if fallback occurred
-    </ResponseField>
-    <ResponseField name="displayName" type="string">
-      Human-readable label (Line 135)
-    </ResponseField>
-    <ResponseField name="provider" type="string">
-      Provider name: `"groq"`, `"bytez"`, or `"Unknown"` (Line 136)
-    </ResponseField>
-  </Expandable>
-</ResponseField>
-
-<ResponseField name="prompt" type="string">
-  Echo of user prompt (Line 138)
-</ResponseField>
-
-<ResponseField name="selectionMode" type="string">
-  `"automatic"` or `"manual"` (Line 139)
-</ResponseField>
-
-<ResponseField name="usage" type="object">
-  <Expandable title="properties">
-    <ResponseField name="promptTokens" type="integer">
-      Input tokens (Line 143)
-    </ResponseField>
-    <ResponseField name="completionTokens" type="integer">
-      Output tokens (Line 144)
-    </ResponseField>
-    <ResponseField name="totalTokens" type="integer">
-      Sum of prompt + completion (Line 145)
-    </ResponseField>
-  </Expandable>
-</ResponseField>
-
-<ResponseField name="responseTimeMs" type="integer">
-  Total duration in milliseconds (Lines 115, 140)
-  
-  **Includes**: Fallback retry time if primary provider failed
-</ResponseField>
-
-<ResponseField name="timestamp" type="string">
-  ISO8601 UTC timestamp (Line 147)
-</ResponseField>
+<ParamField body="maxTokens" type="integer">
+  Maximum number of tokens in the response.
+</ParamField>
 
 <RequestExample>
 ```bash cURL
-curl -X POST 'http://localhost:5079/api/arena/chat' \
-  -H 'Authorization: Bearer YOUR_JWT_TOKEN' \
+curl -X POST https://api.dualmind.ai/v1/chat \
+  -H 'Authorization: Bearer dm_test_xxxxxxxxxxxx' \
   -H 'Content-Type: application/json' \
   -d '{
     "prompt": "Explain quantum computing in simple terms",
-    "model": "llama-3.3-70b-versatile",
-    "temperature": 0.7,
-    "maxTokens": 500,
-    "threadId": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+    "model": "llama-3.3-70b",
+    "temperature": 0.7
   }'
 ```
 
 ```javascript JavaScript
-const response = await fetch('http://localhost:5079/api/arena/chat', {
+const response = await fetch('https://api.dualmind.ai/v1/chat', {
   method: 'POST',
   headers: {
-    'Authorization': `Bearer ${jwt}`,
+    'Authorization': 'Bearer dm_test_xxxxxxxxxxxx',
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
     prompt: 'Explain quantum computing in simple terms',
-    model: 'llama-3.3-70b-versatile',
-    temperature: 0.7,
-    maxTokens: 500,
-    threadId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
+    model: 'llama-3.3-70b',
+    temperature: 0.7
   })
 });
-
-const result = await response.json();
 ```
 
 ```python Python
 import requests
 
-response = requests.post(
-    'http://localhost:5079/api/arena/chat',
-    headers={
-        'Authorization': f'Bearer {jwt}',
-        'Content-Type': 'application/json'
-    },
-    json={
-        'prompt': 'Explain quantum computing in simple terms',
-        'model': 'llama-3.3-70b-versatile',
-        'temperature': 0.7,
-        'maxTokens': 500,
-        'threadId': 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
-    }
+requests.post(
+    'https://api.dualmind.ai/v1/chat',
+    headers={'Authorization': 'Bearer dm_test_xxxxxxxxxxxx'},
+    json={'prompt': 'Explain quantum computing in simple terms', 'temperature': 0.7}
 )
-
-result = response.json()
-```
-
-```go Go
-body := map[string]interface{}{
-    "prompt":      "Explain quantum computing in simple terms",
-    "model":       "llama-3.3-70b-versatile",
-    "temperature": 0.7,
-    "maxTokens":   500,
-    "threadId":    "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-}
-jsonBody, _ := json.Marshal(body)
-
-req, _ := http.NewRequest("POST",
-    "http://localhost:5079/api/arena/chat",
-    bytes.NewBuffer(jsonBody))
-req.Header.Set("Authorization", "Bearer "+jwt)
-req.Header.Set("Content-Type", "application/json")
-
-client := &http.Client{}
-resp, _ := client.Do(req)
-```
-
-```java Java
-HttpClient client = HttpClient.newHttpClient();
-String json = """
-    {
-        "prompt": "Explain quantum computing in simple terms",
-        "model": "llama-3.3-70b-versatile",
-        "temperature": 0.7,
-        "maxTokens": 500,
-        "threadId": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
-    }
-    """;
-
-HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("http://localhost:5079/api/arena/chat"))
-    .header("Authorization", "Bearer " + jwt)
-    .header("Content-Type", "application/json")
-    .POST(HttpRequest.BodyPublishers.ofString(json))
-    .build();
-
-HttpResponse<String> response = client.send(request,
-    HttpResponse.BodyHandlers.ofString());
 ```
 </RequestExample>
 
+## Response
+
+<ResponseField name="success" type="boolean">
+  `true` on a successful completion.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  The model's response text.
+</ResponseField>
+
+<ResponseField name="model" type="object">
+  Metadata about the model that generated the response.
+
+  <Expandable title="properties">
+    <ResponseField name="name" type="string">Model identifier.</ResponseField>
+    <ResponseField name="displayName" type="string">Human-readable name.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="selectionMode" type="string">
+  `"automatic"` if the platform selected the model, `"manual"` if you specified it.
+</ResponseField>
+
+<ResponseField name="latencyMs" type="integer">
+  Time taken to generate the response in milliseconds.
+</ResponseField>
+
+<ResponseField name="usage" type="object">
+  Token usage for this request.
+
+  <Expandable title="properties">
+    <ResponseField name="promptTokens" type="integer">Input tokens consumed.</ResponseField>
+    <ResponseField name="completionTokens" type="integer">Output tokens generated.</ResponseField>
+    <ResponseField name="totalTokens" type="integer">Sum of prompt and completion tokens.</ResponseField>
+  </Expandable>
+</ResponseField>
+
 <ResponseExample>
-```json 200 Success
+```json 200 OK
 {
-  "object": "ai.response",
-  "output": {
-    "type": "message",
-    "content": [
-      {
-        "type": "output_text",
-        "text": "Quantum computing uses quantum bits (qubits) which can exist in multiple states simultaneously through superposition..."
-      }
-    ]
-  },
   "success": true,
-  "message": "Quantum computing uses quantum bits (qubits)...",
+  "message": "Quantum computing uses qubits which can exist in superposition...",
   "model": {
-    "name": "llama-3.3-70b-versatile",
-    "displayName": "Llama 3.3 70B",
-    "provider": "groq"
+    "name": "llama-3.3-70b",
+    "displayName": "Llama 3.3 70B"
   },
-  "prompt": "Explain quantum computing in simple terms",
   "selectionMode": "manual",
+  "latencyMs": 1245,
   "usage": {
     "promptTokens": 15,
     "completionTokens": 120,
     "totalTokens": 135
-  },
-  "responseTimeMs": 1245,
-  "timestamp": "2024-01-15T10:30:00.000Z"
+  }
 }
 ```
 
-```json 400 INVALID_REQUEST
+```json 400 Bad Request
 {
-  "object": "ai.error",
-  "code": "INVALID_REQUEST",
-  "message": "Prompt is required and cannot be empty",
-  "timestamp": "2024-01-15T10:30:00.000Z"
+  "error": "INVALID_REQUEST",
+  "message": "Prompt is required."
 }
 ```
 
 ```json 401 Unauthorized
 {
-  "success": false,
-  "error": "Unauthorized"
-}
-```
-
-```json 500 API_ERROR
-{
-  "object": "ai.error",
-  "code": "API_ERROR",
-  "message": "Both primary provider 'groq' and Groq fallback failed. Original: timeout, Fallback: timeout",
-  "timestamp": "2024-01-15T10:30:00.000Z"
+  "error": "UNAUTHORIZED",
+  "message": "Invalid or missing token."
 }
 ```
 </ResponseExample>
-
-## Side Effects
-
-**Database Mutations** (Lines 150-174):
-
-1. **message_logs** table (Line 150):
-   ```csharp
-   await _messageLogger.LogMessageAsync(sessionId, finalModel, "single", request, response);
-   ```
-
-2. **users** table UPSERT (Lines 152-166):
-   ```csharp
-   await _userSyncService.EnsureUserExistsAsync(userId, email, name);
-   ```
-   - Executes on **every authenticated request**
-   - Idempotent UPSERT operation
-   - Creates user if not exists, updates if exists
-
-3. **thread_messages** table (conditional, Lines 168-174):
-   ```csharp
-   if (!string.IsNullOrEmpty(request.ThreadId)) {
-       await _threadMessagesService.LogSingleAsync(threadIdGuid, request.Prompt, finalModel, response);
-   }
-   ```
-   - Only if `threadId` provided and valid GUID
-   - Links message to existing thread
-
-## Behavior
-
-**Provider Execution with Fallback** (Lines 111, 528-593):
-
-```
-ExecuteWithFallbackAsync flowchart:
-
-1. Primary provider attempt (45s timeout)
-   ├─ Success → Return response
-   └─ Failure/Timeout → Step 2
-
-2. If non-Groq provider failed:
-   ├─ Fallback to Groq with llama-3.3-70b-versatile (45s timeout)
-   ├─ Success → Return response
-   └─ Failure → Step 3
-
-3. If Groq failed or reached here:
-   ├─ Retry with llama-3.3-70b-versatile (45s timeout)
-   ├─ Success → Return response
-   └─ Failure → Throw exception (500 error)
-
-Max total time: 135 seconds (3 × 45s)
-```
-
-**Timeout Implementation** (Lines 540-552):
-```csharp
-var chatTask = provider.ChatAsync(model, prompt, system, maxTokens, temperature);
-var timeoutTask = Task.Delay(45000); // 45 seconds
-
-var completedTask = await Task.WhenAny(chatTask, timeoutTask);
-if (completedTask == chatTask) {
-    return await chatTask;
-} else {
-    throw new TimeoutException($"Provider '{providerName}' timed out after 45s");
-}
-```
-
-**Model Selection** (Lines 102-104):
-- `null` or `"auto"`: Query `ai_models` table for random active model
-- Specific model name: Direct lookup in model registry
-
-**User Sync Timing**:
-- Happens **after** AI inference (Lines 152-166)
-- Non-blocking (awaited)
-- Failure behavior not enforced by server contract
-
-**Thread Message Persistence**:
-- Happens **after** AI inference and user sync
-- Only if `threadId` provided
-- Only if `threadId` valid GUID
-- Failure would bubble to 500 error
-
-## Error Conditions
-
-| Code | HTTP | Cause | Controller Line |
-|------|------|-------|----------------|
-| `INVALID_REQUEST` | 400 | Prompt null or whitespace | 91-97 |
-| `UNAUTHORIZED` | 401 | Missing/invalid JWT | Middleware |
-| `API_ERROR` | 500 | Provider failure | 180-186 |
-| `API_ERROR` | 500 | Uncaught exception | 178-187 |
-
-**Exception Messages** (Lines 184, 428):
-```csharp
-message = ex.InnerException?.Message ?? ex.Message
-```
-Inner exceptions exposed (provider timeout/connection errors visible to client)
-
-## Edge Cases
-
-1. **Invalid threadId GUID**: Silently skipped, no error (Line 170 guard)
-2. **User sync failure**: Logged as warning, request continues (implicit in UserSyncService)
-3. **Model not found**: Fallback chain triggered
-4. **All providers fail**: 500 error after ~135s
-5. **Empty model name**: Treated as `"auto"` (Line 102 check)
-
-## Rate Limits
-
-No explicit rate limiting in controller. Provider-level limits apply:
-- Groq free tier: 30 req/min, 14,400 tokens/min
-- Groq paid tier: Higher limits (check API dashboard)
-- Bytez: Provider-dependent
-
-**429 Handling**: Not explicitly caught, would trigger fallback chain

@@ -1,237 +1,80 @@
 ---
-title: "GET /api/threads/{id}"
-api: "GET /api/threads/{id}"
-description: "Retrieve a single thread by ID"
+title: "Get Thread"
+api: "GET https://api.dualmind.ai/v1/threads/{id}"
+description: "Retrieve details for a specific conversation thread."
 ---
 
 ## Authentication
 
-**Conditional** (Line 116): `[AllowAnonymous]`
-
-Public sharing enabled: Authentication optional for public/unlisted threads
-
-Private threads: Authentication required
-
-**JWT Claims Extraction** (Lines 138-142):
-```csharp
-sub | ClaimTypes.NameIdentifier → User UUID (optional for public threads)
-```
+<ParamField header="Authorization" type="string" required>
+  Required for private threads. Optional for public or unlisted threads.
+  ```
+  Authorization: Bearer dm_test_xxxxxxxxxxxx
+  ```
+</ParamField>
 
 ## Path Parameters
 
 <ParamField path="id" type="string" required>
-  Thread UUID
-
-  **Format**: Valid GUID
-  
-  **Validation**: Route constraint `:guid` (Line 115)
+  The unique ID of the thread.
 </ParamField>
 
 ## Response
 
-<ResponseField name="thread_id" type="string">
-  UUID identifier
-</ResponseField>
-
-<ResponseField name="user_id" type="string">
-  Owner UUID
-</ResponseField>
-
-<ResponseField name="title" type="string">
-  Thread title
-</ResponseField>
-
-<ResponseField name="visibility" type="string">
-  `"private"`, `"public"`, or `"unlisted"`
-</ResponseField>
-
-<ResponseField name="created_at" type="string">
-  ISO8601 UTC timestamp
-</ResponseField>
-
-<ResponseField name="updated_at" type="string">
-  ISO8601 UTC timestamp
-</ResponseField>
+<ResponseField name="threadId" type="string">Unique thread identifier.</ResponseField>
+<ResponseField name="title" type="string">Thread title.</ResponseField>
+<ResponseField name="visibility" type="string">`private`, `public`, or `unlisted`.</ResponseField>
+<ResponseField name="messageCount" type="integer">Number of messages in the thread.</ResponseField>
+<ResponseField name="createdAt" type="string">ISO 8601 creation timestamp.</ResponseField>
+<ResponseField name="updatedAt" type="string">ISO 8601 last-modified timestamp.</ResponseField>
 
 <RequestExample>
 ```bash cURL
-curl -X GET 'http://localhost:5079/api/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479' \
-  -H 'Authorization: Bearer YOUR_JWT_TOKEN'
+curl https://api.dualmind.ai/v1/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479 \
+  -H 'Authorization: Bearer dm_test_xxxxxxxxxxxx'
 ```
 
 ```javascript JavaScript
 const response = await fetch(
-  'http://localhost:5079/api/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479',
-  {
-    headers: { 'Authorization': `Bearer ${jwt}` }
-  }
+  'https://api.dualmind.ai/v1/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479',
+  { headers: { 'Authorization': 'Bearer dm_test_xxxxxxxxxxxx' } }
 );
-
 const thread = await response.json();
 ```
 
 ```python Python
 import requests
 
-response = requests.get(
-    'http://localhost:5079/api/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479',
-    headers={'Authorization': f'Bearer {jwt}'}
-)
-
-thread = response.json()
+thread = requests.get(
+    'https://api.dualmind.ai/v1/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479',
+    headers={'Authorization': 'Bearer dm_test_xxxxxxxxxxxx'}
+).json()
 ```
 </RequestExample>
 
 <ResponseExample>
-```json 200 Success
+```json 200 OK
 {
-  "thread_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-  "user_id": "user-uuid-here",
-  "title": "My Conversation",
+  "threadId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "title": "GPT-4 vs Claude Coding Tests",
   "visibility": "private",
-  "created_at": "2024-01-15T10:30:00.000Z",
-  "updated_at": "2024-01-15T11:45:00.000Z"
+  "messageCount": 12,
+  "createdAt": "2024-01-10T08:00:00.000Z",
+  "updatedAt": "2024-01-15T10:30:00.000Z"
 }
 ```
 
-```json 404 NOT_FOUND
+```json 403 Forbidden
 {
-  "success": false,
-  "error": "Thread not found",
-  "code": "NOT_FOUND"
+  "error": "FORBIDDEN",
+  "message": "You do not have permission to view this thread."
 }
 ```
 
-```json 401 UNAUTHORIZED
+```json 404 Not Found
 {
-  "success": false,
-  "error": "Authentication required to access this thread",
-  "code": "UNAUTHORIZED"
-}
-```
-
-```json 403 FORBIDDEN
-{
-  "success": false,
-  "error": "You do not have access to this thread",
-  "code": "FORBIDDEN"
-}
-```
-
-```json 500 THREAD_ERROR
-{
-  "success": false,
-  "error": "Database query failed",
-  "code": "THREAD_ERROR"
+  "error": "NOT_FOUND",
+  "message": "Thread not found."
 }
 ```
 </ResponseExample>
-
-## Authorization Logic
-
-**Feature Flag Check** (Line 134):
-```csharp
-var publicSharingEnabled = await _systemSettingsService.GetFeatureFlagAsync("public_sharing");
-```
-
-**Access Decision Tree** (Lines 150-179):
-
-```
-1. Check if public_sharing enabled AND visibility is public/unlisted:
-   ├─ TRUE → Allow access (return thread)
-   └─ FALSE → Step 2
-
-2. Check if user authenticated:
-   ├─ FALSE → 401 UNAUTHORIZED
-   └─ TRUE → Step 3
-
-3. Check if visibility is private AND userId != thread.userId:
-   ├─ TRUE → 403 FORBIDDEN
-   └─ FALSE → Allow access (return thread)
-```
-
-### PUBLIC_SHARING Feature Flag States
-
-| Flag | Visibility | Auth | Access |
-|------|-----------|------|--------|
-| ON | public | No | ✅ Allowed (Line 150-154) |
-| ON | unlisted | No | ✅ Allowed (Line 150-154) |
-| ON | private | No | ❌ 401 (Line 158-166) |
-| ON | private | Yes (owner) | ✅ Allowed (Line 179) |
-| ON | private | Yes (other) | ❌ 403 (Line 169-177) |
-| OFF | public | No | ❌ 401 (Line 158-166) |
-| OFF | public | Yes (owner) | ✅ Allowed (Line 179) |
-| OFF | public | Yes (other) | ❌ 403 (Line 169-177) |
-| OFF | unlisted | No | ❌ 401 |
-| OFF | private | Yes (owner) | ✅ Allowed |
-
-## Side Effects
-
-**Database Reads** (Lines 121, 134):
-- SELECT from `threads` table WHERE `thread_id = {id}`
-- SELECT from `system_settings` table WHERE `key = 'public_sharing'`
-
-**No Database Writes**: Read-only endpoint
-
-## Permissions
-
-**Who Can Read**:
-1. **Public threads** (when `public_sharing = true`): Anyone
-2. **Unlisted threads** (when `public_sharing = true`): Anyone with the link
-3. **Private threads**: Owner only
-4. **Any visibility** (when `public_sharing = false`): Owner only
-
-**Visibility Semantics**:
-- `private`: Requires auth + ownership
-- `public`: Visible to all when feature enabled
-- `unlisted`: Visible to all when feature enabled, but not listed in search/discovery
-
-## Edge Cases
-
-1. **Thread doesn't exist**: 404 (Lines 123-131)
-2. **Invalid GUID format**: 400 (route constraint, not in controller code)
-3. **Deleted thread**: 404 (service returns null)
-4. **Feature flag missing**: Treated as `false` (default behavior assumed)
-5. **User ID claim missing for public thread**: Allowed (auth optional, Lines 137-142)
-6. **User ID claim present but thread private**: Ownership check applies (Line 169)
-
-## Error Conditions
-
-| Code | HTTP | Cause | Controller Line |
-|------|------|-------|----------------|
-| `NOT_FOUND` | 404 | Thread doesn't exist | 123-131 |
-| `UNAUTHORIZED` | 401 | Auth required but missing | 158-166 |
-| `FORBIDDEN` | 403 | Private thread, wrong user | 169-177 |
-| `THREAD_ERROR` | 500 | Service exception | 181-189 |
-
-**Exception Handling** (Lines 181-189):
-```csharp
-catch (Exception ex) {
-    return StatusCode(500, new { error = ex.Message, code = "THREAD_ERROR" });
-}
-```
-
-## Behavioral Guarantees
-
-**Visibility Check Order**:
-1. Thread existence (404 if not found)
-2. Feature flag + visibility (public access allowed here)
-3. Authentication (401 if required but missing)
-4. Ownership (403 if private + wrong owner)
-
-**Authentication Optional**: Only for public/unlisted threads with feature flag enabled
-
-**Ownership Enforcement**: Always checked for private threads, regardless of feature flag
-
-**Feature Flag Dependency**: `public_sharing` setting controls anonymous access
-
-## Security Implications
-
-**Public Exposure Risk**: When `public_sharing = true`:
-- Public threads visible without authentication
-- Unlisted threads accessible via direct link (URL guessing possible)
-- No rate limiting documented
-
-**Privacy Guarantee**: Private threads NEVER accessible by non-owners
-
-**Auth Bypass**: Public/unlisted threads accessible anonymously ONLY when feature enabled

@@ -1,202 +1,118 @@
 ---
-title: "Welcome to DualMind Lab"
+title: "Welcome to DualMind Arena"
 sidebarTitle: "Introduction"
-description: "Complete technical documentation for DualMind Lab — a blind AI model comparison platform. Built for AI agents and developers."
+description: "DualMind Arena — the blind AI model comparison platform. Compare leading AI models side-by-side, vote on the best response, and discover model quality through crowd-sourced benchmarks."
 keywords: ["DualMind", "AI arena", "model comparison", "LLM benchmark", "blind testing"]
 ---
 
 <img
   className="block dark:hidden"
   src="/logo/light.svg"
-  alt="DualMind Lab"
+  alt="DualMind Arena"
 />
 <img
   className="hidden dark:block"
   src="/logo/dark.svg"
-  alt="DualMind Lab"
+  alt="DualMind Arena"
 />
 
-## What is DualMind Lab? <Badge>v2.0</Badge>
+## What is DualMind Arena? <Badge>v2.0</Badge>
 
-DualMind Lab is an **AI model comparison platform** that allows users to compare two or more AI models side-by-side with random or blind selection, vote on which response is better, and track model performance on a community-driven <Tooltip tip="Elo rating system adapted from chess for ranking AI models based on pairwise comparisons">ELO-based leaderboard</Tooltip>.
+DualMind Arena is a **blind AI model comparison platform** that lets you evaluate leading AI models side-by-side — without brand bias. Submit a prompt, receive responses from two competing models simultaneously, vote on which response is superior, and contribute to a community-driven <Tooltip tip="Elo rating system adapted from chess for ranking AI models based on pairwise comparisons">ELO-based leaderboard</Tooltip>.
 
 <Info>
-**Blind comparison** eliminates brand bias — users don't see which model generated which response until after voting.
+**Blind comparison** eliminates brand bias — model identities are hidden until after you vote, ensuring quality drives every ranking.
 </Info>
 
 <CardGroup cols={2}>
-  <Card title="Dual-Chat Arena" icon="messages">
-    Send one prompt to two randomly selected AI models and compare responses side-by-side in a blind test
+  <Card title="Arena Battle Mode" icon="swords">
+    Submit one prompt to two AI models simultaneously and compare their responses in a fully blind, unbiased test
   </Card>
-  <Card title="Community Voting" icon="ranking-star">
-    Vote for the better response. Votes feed into an ELO-based leaderboard that ranks model performance
+  <Card title="Community Leaderboard" icon="ranking-star">
+    Every vote contributes to an ELO-based ranking system that reflects real-world model quality
   </Card>
-  <Card title="Thread Management" icon="folder-open">
-    Persistent conversation threads with visibility controls (private, public, unlisted) and sharing
+  <Card title="Conversation Threads" icon="folder-open">
+    Persist your comparisons in organized threads with flexible sharing — private, public, or link-only
   </Card>
-  <Card title="Multi-Provider AI" icon="plug">
-    Groq and Bytez providers with automatic key rotation, failover, and fallback logic built in
+  <Card title="Multi-Model Support" icon="brain">
+    Access a curated roster of leading AI models, with new additions rolled out continuously
   </Card>
 </CardGroup>
-
-## Technology stack
-
-<Tabs>
-  <Tab title="Overview">
-    | Layer | Technology | Details |
-    |-------|-----------|---------|
-    | **Backend** | .NET 8 / C# / ASP.NET Core | REST API with Swagger, hosted on Azure |
-    | **Database** | PostgreSQL via Supabase | All data: users, threads, comparisons, votes, models |
-    | **Auth** | Supabase Auth + JWT | HS256 tokens, `sub` claim = user ID |
-    | **Frontend** | Vanilla JS + HTML/CSS | Served via Cloudflare Workers, SSE streaming |
-    | **Admin Panel** | Vanilla JS + Cloudflare Workers | Proxies `/api/*` to backend, serves static HTML |
-    | **AI Providers** | Groq, Bytez | OpenAI-compatible chat completions API |
-  </Tab>
-  <Tab title="Backend">
-    - **Runtime**: .NET 8.0 (ASP.NET Core)
-    - **Language**: C# with async/await throughout
-    - **Auth**: JWT Bearer validation (HS256, Supabase-issued)
-    - **Data access**: Direct HTTP to Supabase PostgREST (no ORM)
-    - **AI gateway**: `IChatProvider` abstraction with `GroqService` and `BytezService`
-    - **Hosting**: Azure App Service
-
-    <Tip>
-    The backend uses `Task.WhenAll()` for parallel dual-chat execution — both models run simultaneously.
-    </Tip>
-  </Tab>
-  <Tab title="Frontend">
-    - **Framework**: None — vanilla JavaScript ES6+
-    - **Styling**: Custom CSS with responsive design
-    - **Auth**: Supabase JS SDK (`@supabase/supabase-js`)
-    - **Streaming**: `fetch()` with `ReadableStream` for SSE
-    - **Hosting**: Cloudflare Workers (static asset serving + API proxy)
-
-    <Note>
-    The Cloudflare Worker proxies `/api/*` requests to the backend, avoiding CORS issues entirely.
-    </Note>
-  </Tab>
-  <Tab title="Database">
-    - **Engine**: PostgreSQL 15 (Supabase-managed)
-    - **Tables**: `users`, `threads`, `thread_messages`, `comparisons`, `model_votes`, `ai_models`, `providers`, `provider_api_keys`, `system_settings`
-    - **Access**: Service role key (bypasses RLS)
-    - **IDs**: UUID v4 for all primary keys
-  </Tab>
-</Tabs>
 
 ## How it works
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant Frontend
-    participant Backend as .NET API
-    participant DB as Supabase/PostgreSQL
-    participant AI as AI Provider (Groq/Bytez)
+    participant Arena as DualMind Arena
+    participant AI as AI Models
 
-    User->>Frontend: Types prompt, clicks Compare
-    Frontend->>Backend: POST /api/arena/dualchat {prompt}
-    Backend->>DB: Select 2 random active models
-    par Model A
-        Backend->>AI: ChatCompletion(modelA, prompt)
-        AI-->>Backend: Response A
-    and Model B
-        Backend->>AI: ChatCompletion(modelB, prompt)
-        AI-->>Backend: Response B
-    end
-    Backend->>DB: Log comparison + messages
-    Backend-->>Frontend: {agent1, agent2, comparisonId}
-    Frontend-->>User: Display both responses (blind)
-    User->>Frontend: Votes for winner
-    Frontend->>Backend: POST /api/arena/model-vote
-    Backend->>DB: Record vote, update stats
-    Backend-->>Frontend: Reveal model names
+    User->>Arena: Submit a prompt
+    Arena->>AI: Evaluate with Model A
+    Arena->>AI: Evaluate with Model B
+    AI-->>Arena: Response A
+    AI-->>Arena: Response B
+    Arena-->>User: Display both responses (blind)
+    User->>Arena: Vote for the better response
+    Arena-->>User: Reveal model identities
+    Arena-->>User: Update leaderboard rankings
 ```
+
+## Platform modes
+
+<Tabs>
+  <Tab title="Arena Battle">
+    Send one prompt to two randomly selected AI models. Responses appear side-by-side under anonymous labels. Vote for the better response — then see which models you were comparing.
+
+    **Best for**: Unbiased quality benchmarking, leaderboard contributions, discovering which models excel at specific tasks.
+  </Tab>
+  <Tab title="Single Chat">
+    Chat with a specific AI model directly. Useful for targeted testing or building with a known model.
+
+    **Best for**: Focused evaluation of a particular model, real-time streaming responses, conversational workflows.
+  </Tab>
+  <Tab title="Threaded Conversations">
+    Organize your prompts and comparisons into persistent threads. Share publicly, keep private, or distribute via link.
+
+    **Best for**: Documenting research, sharing interesting comparisons with colleagues, building a personal comparison archive.
+  </Tab>
+</Tabs>
+
+## Authentication
+
+API access requires a valid authentication token obtained through the DualMind platform:
+
+```bash
+Authorization: Bearer <your_token>
+```
+
+<AccordionGroup>
+  <Accordion title="Getting started with the API" icon="key">
+    1. Create an account at [arena.dualmindlab.tech](https://arena.dualmindlab.tech)
+    2. Sign in using Google OAuth or email
+    3. Your session token is automatically obtained by the platform
+    4. For programmatic access, refer to the [API Reference](/api-reference/introduction)
+  </Accordion>
+  <Accordion title="Token validity" icon="shield-check">
+    Authentication tokens are short-lived and automatically refreshed by the platform. For API integrations, refer to the authentication section in the [API Reference](/api-reference/introduction).
+  </Accordion>
+</AccordionGroup>
 
 ## Quick links
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Clone repos, configure environment, run locally in under 15 minutes
+    Get up and running with DualMind Arena in minutes
   </Card>
-  <Card title="Architecture Overview" icon="diagram-project" href="/architecture/overview">
-    System diagrams, component interactions, and technology breakdown
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Full endpoint documentation with interactive playground
   </Card>
-  <Card title="API Reference" icon="code" href="/api-reference/chat/single-chat">
-    All endpoints with interactive playground and multi-language examples
+  <Card title="Core Concepts" icon="lightbulb" href="/concepts/how-dualmind-works">
+    Understand how blind comparison, voting, and rankings work
   </Card>
-  <Card title="Database Schema" icon="database" href="/database/schema">
-    Complete table definitions, ER diagrams, and relationships
-  </Card>
-</CardGroup>
-
-## Repository structure
-
-DualMind Lab is a **multi-repo project** with three main repositories:
-
-<CardGroup cols={3}>
-  <Card title="Backend API" icon="server" href="/architecture/backend">
-    **DualMind_Back** — .NET 8 REST API with JWT auth, AI provider gateway, and Supabase data access
-  </Card>
-  <Card title="Frontend" icon="browser" href="/architecture/frontend">
-    **DualMind UI** — Vanilla JS SPA with SSE streaming, served via Cloudflare Workers
-  </Card>
-  <Card title="Admin Panel" icon="gauge" href="/architecture/admin">
-    **DualMind Admin UI** — Cloudflare Worker dashboard with full CRUD for all entities
+  <Card title="Roadmap" icon="map" href="/roadmap">
+    See what's coming next for DualMind Arena
   </Card>
 </CardGroup>
 
-## Authentication
-
-All API endpoints (except health checks and feature flags) require a Supabase JWT token:
-
-```bash filename="Authorization Header"
-Authorization: Bearer <SUPABASE_JWT_TOKEN>
-```
-
-<AccordionGroup>
-  <Accordion title="How to get a JWT token" icon="key">
-    1. Sign in via the frontend using **Google OAuth** or email/password
-    2. Supabase Auth issues a JWT with `sub` (user UUID), `email`, and `aud: "authenticated"`
-    3. The frontend stores the token via `supabase.auth.getSession()`
-    4. All API requests include the token in the `Authorization: Bearer` header
-
-    ```javascript filename="frontend/js/api-client.js"
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-
-    const response = await fetch('/api/arena/chat', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    ```
-  </Accordion>
-  <Accordion title="JWT validation in the backend" icon="shield-check">
-    The backend validates every JWT using HS256 with the Supabase project's JWT secret:
-
-    ```csharp filename="Program.cs"
-    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer(options => {
-            options.TokenValidationParameters = new TokenValidationParameters {
-                ValidateIssuer = true,
-                ValidIssuer = $"{supabaseUrl}/auth/v1",
-                ValidateAudience = true,
-                ValidAudience = "authenticated",
-                ValidateLifetime = true,
-                IssuerSigningKey = new SymmetricSecurityKey(
-                    Encoding.UTF8.GetBytes(jwtSecret))
-            };
-        });
-    ```
-
-    <Warning>
-    The JWT secret must match your Supabase project exactly. Find it in **Supabase Dashboard > Settings > API > JWT Secret**.
-    </Warning>
-  </Accordion>
-</AccordionGroup>
-
-## Explore the docs
-
-<Tip>
-Press <kbd>Cmd</kbd> + <kbd>C</kbd> (<kbd>Ctrl</kbd> + <kbd>C</kbd> on Windows) on any page to copy it as Markdown for AI tools. Or use the contextual menu to send pages directly to ChatGPT, Claude, or Perplexity.
-</Tip>
-
-<Check>Ready to start? Head to the [Quickstart guide](/quickstart), explore the [Architecture](/architecture/overview), or jump to the [API Reference](/api-reference/introduction).</Check>
+<Check>Ready to start? Head to the [Quickstart guide](/quickstart) or jump directly to the [API Reference](/api-reference/introduction).</Check>

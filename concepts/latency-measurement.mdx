@@ -1,0 +1,43 @@
+---
+title: "Latency & Performance"
+sidebarTitle: "Latency"
+description: "How DualMind Arena measures model speed and handles real-time streaming performance."
+keywords: ["latency", "speed", "tokens per second", "ttft"]
+---
+
+## Measuring Performance
+
+In addition to response quality, DualMind Arena tracks model execution speed. For many applications, a slightly "worse" model might be preferred if it is significantly faster and cheaper.
+
+We track several key metrics for every generation:
+
+### 1. Time to First Token (TTFT)
+The time elapsed between sending your request and receiving the very first character of the response.
+- **Why it matters**: Crucial for perceived responsiveness in chat applications.
+- **Typical values**: < 200ms (Excellent) to > 1000ms (Sluggish).
+
+### 2. Output Speed (Tokens/Sec)
+How fast the model generates text once it starts writing.
+- **Why it matters**: Determines how quickly a long summary or code block finishes.
+- **Typical values**: 30 t/s (Readable) to 100+ t/s (Instant).
+
+### 3. Total Latency
+The total wall-clock time from request to completion.
+
+## The Trade-off Triangle
+
+When evaluating models in the Arena, you'll often notice a trade-off:
+
+1.  **Quality** (Reasoning depth)
+2.  **Speed** (Inference velocity)
+3.  **Cost** (Compute resources)
+
+frontier models often maximize Quality but sacrifice Speed. Distilled or quantized models maximize Speed often at a slight cost to Quality.
+
+DualMind Arena exposes these trade-offs by showing you the generation time alongside the response, allowing you to vote based on your own priority (e.g., "This answer was slightly worse, but it was 5x faster, so I prefer it").
+
+## Streaming Architecture
+
+To ensure the fairest comparison, DualMind uses high-performance streaming connections for all models. This ensures that you see the text generation in real-time as it happens, mimicking the actual experience of using these models in a production application.
+
+Code blocks, markdown rendering, and syntax highlighting are applied on-the-fly, ensuring that a faster model's output is rendered just as beautifully as a slower one.

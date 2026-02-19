@@ -1,212 +1,83 @@
 ---
 title: Quickstart
-description: Get DualMind Lab running locally in under 15 minutes — backend, frontend, and your first arena battle.
-keywords: ["quickstart", "setup", "local development", "getting started"]
+description: Get started with DualMind Arena — your guide to blind AI model comparison and evaluation.
+keywords: ["quickstart", "getting started", "AI arena", "model comparison"]
 ---
 
 <Info>
-**Time estimate**: ~15 minutes. You will have a fully working DualMind Lab instance with chat, arena comparisons, and voting.
+**Time to first comparison**: ~2 minutes. You'll be comparing leading AI models side-by-side in moments.
 </Info>
 
 ## Prerequisites
 
 <AccordionGroup>
-  <Accordion title=".NET 8 SDK" icon="code">
-    Download from [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/8.0)
+  <Accordion title="DualMind Account" icon="user">
+    Sign up for a free account at [arena.dualmindlab.tech](https://arena.dualmindlab.tech).
     
-    ```bash
-    dotnet --version
-    # Should output: 8.0.x
-    ```
+    You can use:
+    - Google Sign-In (Recommended)
+    - Email & Password
   </Accordion>
 
-  <Accordion title="Node.js 18+" icon="node-js">
-    Download from [nodejs.org](https://nodejs.org)
-    
-    ```bash
-    node --version && npm --version
-    ```
-  </Accordion>
-  
-  <Accordion title="Supabase project" icon="database">
-    Create a free project at [supabase.com](https://supabase.com). You need:
-    - **Project URL** (e.g., `https://xxx.supabase.co`)
-    - **Anon key** (Settings > API)
-    - **Service role key** (Settings > API)
-    - **JWT secret** (Settings > API > JWT Secret)
-
-    <Warning>Save the JWT Secret immediately — you cannot retrieve it later without resetting it.</Warning>
-  </Accordion>
-  
-  <Accordion title="Groq API key" icon="key">
-    Get a free key at [console.groq.com](https://console.groq.com). This is the primary AI provider.
-
-    <Tip>Groq's free tier gives you 30 requests/min and up to 800 tokens/sec — plenty for development.</Tip>
+  <Accordion title="Basic AI Knowledge" icon="brain">
+    Familiarity with prompting (e.g., "Write a poem about rust" or "Explain quantum computing") helps you create better comparisons.
   </Accordion>
 </AccordionGroup>
 
-## Setup
+## Start Comparing
 
 <Steps>
-  <Step title="Clone repositories">
-    ```bash filename="Terminal"
-    git clone https://github.com/HarshBhanushali07/DualMind_Back.git
-    git clone https://github.com/HarshBhanushali07/DualMind_UI.git
-    git clone https://github.com/HarshBhanushali07/DualMind_Admin-UI.git
-    ```
+  <Step title="Login to the Arena">
+    Navigate to [arena.dualmindlab.tech](https://arena.dualmindlab.tech) and log in.
+    
+    You'll land on the main **Arena Battle** interface.
   </Step>
 
-  <Step title="Configure environment variables">
-    <Tabs>
-      <Tab title="Backend (.env)">
-        Create `.env` in `DualMind_Back/src/DualMind.API/`:
-
-        ```bash filename="DualMind_Back/src/DualMind.API/.env"
-        SUPABASE_URL=https://your-project.supabase.co
-        SUPABASE_SERVICE_ROLE_KEY=eyJ...your-service-role-key
-        SUPABASE_KEY=eyJ...your-anon-key
-        JWT_SECRET=your-jwt-secret-from-supabase
-        GROQ_API_KEY=gsk_...your-groq-api-key
-        ```
-
-        <Warning>Never commit `.env` files to Git. The `.gitignore` already excludes them.</Warning>
-      </Tab>
-      <Tab title="Frontend (config.js)">
-        Edit `DualMind_UI/config.js`:
-
-        ```javascript filename="DualMind_UI/config.js"
-        window.DUALMIND_CONFIG.supabase.url = 'https://your-project.supabase.co';
-        window.DUALMIND_CONFIG.supabase.anonKey = 'eyJ...your-anon-key';
-        ```
-      </Tab>
-    </Tabs>
+  <Step title="Select a Mode">
+    Choose your comparison mode:
+    
+    - **Random Battle**: Pit two random models against each other (Best for unbiased discovery)
+    - **Topper Battle**: Challenge the current leaderboard champion against a random contender
+    - **Manual Selection**: Pick specific models to compare directly (Great for A/B testing)
   </Step>
 
-  <Step title="Start the backend">
-    ```bash filename="Terminal"
-    cd DualMind_Back/src/DualMind.API
-    dotnet restore
-    dotnet run
-    ```
-
-    <Check>Verify: `curl http://localhost:5079/health` returns `{"status":"healthy"}`</Check>
+  <Step title="Enter Your Prompt">
+    Type a prompt into the chat box.
+    
+    <Tip>
+    **Pro Tip**: Use complex, open-ended prompts to reveal subtle differences in model reasoning, creativity, and instruction following.
+    </Tip>
+    
+    Example: *"Explain the difference between TCP and UDP to a 5-year-old using a pizza delivery analogy."*
   </Step>
 
-  <Step title="Start the frontend">
-    ```bash filename="Terminal"
-    cd DualMind_UI
-    npm install
-    npm run dev
-    ```
-
-    <Check>Verify: Open `http://localhost:8000` in your browser</Check>
-  </Step>
-
-  <Step title="Your first arena battle">
-    <Tabs>
-      <Tab title="Via the UI">
-        1. Open `http://localhost:8000`
-        2. Click **Login with Google** (or create an account via Supabase)
-        3. Type a prompt like "Explain quantum computing simply"
-        4. Click **Compare** — two models respond side-by-side
-        5. Vote for the better response
-        6. Model names are revealed after voting
-      </Tab>
-      <Tab title="Via cURL">
-        Get a JWT token by logging in through the frontend, then:
-
-        ```bash filename="Single Chat"
-        curl -X POST http://localhost:5079/api/arena/chat \
-          -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-          -H "Content-Type: application/json" \
-          -d '{"prompt": "Explain quantum computing in simple terms"}'
-        ```
-
-        ```json filename="Response"
-        {
-          "object": "ai.response",
-          "success": true,
-          "message": "Quantum computing is a type of computing that...",
-          "model": {
-            "name": "llama-3.3-70b-versatile",
-            "displayName": "Llama 3.3 70B",
-            "provider": "groq"
-          },
-          "responseTimeMs": 1245,
-          "usage": { "promptTokens": 15, "completionTokens": 120, "totalTokens": 135 }
-        }
-        ```
-
-        ```bash filename="Dual Chat (Arena)"
-        curl -X POST http://localhost:5079/api/arena/dualchat \
-          -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-          -H "Content-Type: application/json" \
-          -d '{"prompt": "Explain quantum computing", "selectionMode": "random"}'
-        ```
-
-        The response includes `agent1`, `agent2`, `comparisonId`, and arena comparison metrics.
-
-        <Tip>Copy the `comparisonId` from the dual-chat response to submit a vote via `POST /api/arena/model-vote`.</Tip>
-      </Tab>
-    </Tabs>
-
-    <Check>You now have a running DualMind Lab instance with chat, comparisons, and voting.</Check>
+  <Step title="Vote on the Winner">
+    Two anonymous models will generate responses side-by-side. Read both and vote:
+    
+    - **Left is Better**: The left model gave a superior answer
+    - **Right is Better**: The right model gave a superior answer
+    - **Tie**: Both answers were equally good
+    - **Both Bad**: Neither answer was helpful
+    
+    <Check>
+    After voting, the model identities are revealed! You'll see exactly which models you just compared.
+    </Check>
   </Step>
 </Steps>
 
-## Next steps
+## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Architecture Overview" icon="diagram-project" href="/architecture/overview">
-    Understand the full system design
+  <Card title="Understand Scoring" icon="chart-line" href="/concepts/model-comparison">
+    Learn how the ELO rating system ranks models based on your votes.
   </Card>
-  <Card title="API Reference" icon="code" href="/api-reference/chat/dual-chat">
-    Explore all API endpoints
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Integrate DualMind comparisons directly into your own applications.
   </Card>
-  <Card title="Database Schema" icon="database" href="/database/schema">
-    See all tables and relationships
+  <Card title="Share Results" icon="share-nodes" href="/concepts/threads">
+    Learn how to share your interesting comparisons with the community.
   </Card>
-  <Card title="Troubleshooting" icon="wrench" href="/development/troubleshooting">
-    Fix common setup issues
+  <Card title="Explore Models" icon="robot" href="/concepts/model-comparison">
+    Discover the strengths and weaknesses of different AI models.
   </Card>
 </CardGroup>
-
-## Common issues
-
-<AccordionGroup>
-  <Accordion title="401 Unauthorized" icon="lock">
-    **Root cause**: JWT token is missing, expired, or signed with wrong secret.
-
-    **Fix**:
-    1. Verify JWT token is from Supabase Auth (not expired)
-    2. Check `Authorization: Bearer <token>` header format
-    3. Ensure `JWT_SECRET` in `.env` matches your Supabase project
-
-    ```bash filename="Debug: decode JWT"
-    # Paste your token at jwt.io to inspect claims
-    # Verify: iss matches SUPABASE_URL/auth/v1, aud is "authenticated"
-    ```
-  </Accordion>
-  
-  <Accordion title="500 on chat requests" icon="triangle-exclamation">
-    **Root cause**: AI provider failure or missing database records.
-
-    **Fix**:
-    1. Check `GROQ_API_KEY` is valid at [console.groq.com](https://console.groq.com)
-    2. Ensure `ai_models` table has at least one row with `status = 'active'`
-    3. Check backend terminal logs for the specific provider error
-
-    <Note>The fallback chain tries: Groq primary → Groq alt model → Bytez. All three must fail for a 500.</Note>
-  </Accordion>
-  
-  <Accordion title="Frontend can't reach backend" icon="plug">
-    **Root cause**: Backend not running or CORS misconfiguration.
-
-    **Fix**:
-    1. Verify backend is running: `curl http://localhost:5079/health`
-    2. Check `config.js` — `apiBaseUrl` auto-detects localhost in development
-    3. Open browser DevTools > Console for specific CORS or network errors
-
-    <Tip>In production, the Cloudflare Worker proxies `/api/*` to the backend, so CORS is not an issue.</Tip>
-  </Accordion>
-</AccordionGroup>

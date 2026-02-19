@@ -1,0 +1,60 @@
+---
+title: "How DualMind Works"
+sidebarTitle: "How it Works"
+description: "Understand the core mechanics of DualMind Arena — from blind model comparison to ELO scoring."
+keywords: ["concepts", "mechanics", "elo", "blind testing", "model comparison"]
+---
+
+## The Blind Comparison Concept
+
+The most effective way to evaluate AI models is to remove brand bias. If you know a response comes from "GPT-4" or "Claude 3.5 Sonnet", you are subconsciously primed to rate it higher.
+
+DualMind Arena solves this with **Blind Battles**:
+
+1. **Submit a Prompt**: You send a single prompt to the arena.
+2. **Anonymous Generation**: Two different models generate responses simultaneously. Labels are hidden (e.g., "Model A" vs "Model B").
+3. **Vote**: You select the better response based purely on quality, accuracy, and helpfulness.
+4. **Reveal**: Only *after* you vote are the model identities revealed.
+
+This methodology creates a dataset of pure quality preference, unpolluted by marketing or brand reputation.
+
+## The ELO Rating System
+
+We use the **ELO rating system** — the same system used in Chess and competitive video games — to rank AI models.
+
+- **Starting Score**: All models start with a baseline rating (e.g., 1000).
+- **Winning**: Beating a high-rated model awards more points than beating a low-rated one.
+- **Losing**: Losing to a low-rated model costs more points than losing to a highly-rated champion.
+- **Ties**: Points are distributed based on the rating difference (a lower-rated model drawing with a higher-rated one gains points).
+
+This system is self-correcting. Over thousands of battles, it produces a highly accurate hierarchy of model capability that reflects real-world usage patterns rather than abstract benchmarks.
+
+## Data Processing Pipeline
+
+When you submit a prompt to DualMind Arena, our platform orchestrates a complex evaluation pipeline in milliseconds:
+
+<Steps>
+  <Step title="Safety & Moderation">
+    Incoming prompts are scanned for safety policy compliance to ensuring the arena remains a constructive environment.
+  </Step>
+
+  <Step title="Model Orchestration">
+    The system selects model pairs based on your chosen mode (Random, Topper, or Manual) and routes the request to the appropriate inference providers.
+  </Step>
+
+  <Step title="Parallel Inference">
+    Both models process the prompt simultaneously. We normalize response times to ensure speed differences don't bias your voting decision (unless speed is your specific criteria).
+  </Step>
+
+  <Step title="Response Normalization">
+    Markdown formatting, code blocks, and LaTeX math are standardized to ensure visual consistency between different models' outputs.
+  </Step>
+</Steps>
+
+## Platform Architecture
+
+DualMind is built for high availability and low latency.
+
+- **Global Edge Network**: Our frontend is served from edge locations worldwide to minimize initial load time.
+- **Provider Resilience**: We integrate with multiple AI inference providers. If one provider experiences downtime, traffic is automatically rerouted to ensure the arena remains active.
+- **Live Leaderboards**: Voting data is processed in real-time, meaning the leaderboard you see always reflects the very latest community consensus.

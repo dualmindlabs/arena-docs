@@ -1,267 +1,93 @@
 ---
-title: "GET /api/threads/{id}/messages"
-api: "GET /api/threads/{id}/messages"
-description: "Retrieve all messages in a thread"
+title: "Get Messages"
+api: "GET https://api.dualmind.ai/v1/threads/{id}/messages"
+description: "Retrieve all messages associated with a specific conversation thread."
 ---
 
 ## Authentication
 
-**Conditional** (Line 198): `[AllowAnonymous]`
-
-Follows same access rules as GET /api/threads/{id}
+<ParamField header="Authorization" type="string" required>
+  ```
+  Authorization: Bearer dm_test_xxxxxxxxxxxx
+  ```
+</ParamField>
 
 ## Path Parameters
 
 <ParamField path="id" type="string" required>
-  Thread UUID
-
-  **Format**: Valid GUID
-  
-  **Validation**: Route constraint `:guid` (Line 197)
+  The unique ID of the thread.
 </ParamField>
 
 ## Response
 
 <ResponseField name="items" type="array">
-  Array of message objects
-  
+  An array of message objects in chronological order.
+
   <Expandable title="Message object">
-    <ResponseField name="message_id" type="string">
-      UUID identifier
-    </ResponseField>
-    <ResponseField name="thread_id" type="string">
-      Parent thread UUID
-    </ResponseField>
-    <ResponseField name="prompt_text" type="string">
-      User's input message
-    </ResponseField>
-    <ResponseField name="model1_id" type="string">
-      First model UUID (nullable for single-chat mode)
-    </ResponseField>
-    <ResponseField name="model2_id" type="string">
-      Second model UUID (nullable for single-chat mode)
-    </ResponseField>
-    <ResponseField name="model1_response" type="string">
-      First model's response text
-    </ResponseField>
-    <ResponseField name="model2_response" type="string">
-      Second model's response text (nullable for single-chat)
-    </ResponseField>
-    <ResponseField name="comparison_id" type="string">
-      Comparison UUID (only for dual-chat mode)
-    </ResponseField>
-    <ResponseField name="model1_time_ms" type="integer">
-      First model inference time in milliseconds
-    </ResponseField>
-    <ResponseField name="model2_time_ms" type="integer">
-      Second model inference time (nullable)
-    </ResponseField>
-    <ResponseField name="created_at" type="string">
-      ISO8601 UTC timestamp
-    </ResponseField>
+    <ResponseField name="messageId" type="string">Unique message identifier.</ResponseField>
+    <ResponseField name="role" type="string">`"user"` or `"assistant"`.</ResponseField>
+    <ResponseField name="content" type="string">The message text.</ResponseField>
+    <ResponseField name="modelName" type="string">The AI model that generated this message (for assistant messages).</ResponseField>
+    <ResponseField name="createdAt" type="string">ISO 8601 timestamp.</ResponseField>
   </Expandable>
 </ResponseField>
 
 <RequestExample>
 ```bash cURL
-curl -X GET 'http://localhost:5079/api/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479/messages' \
-  -H 'Authorization: Bearer YOUR_JWT_TOKEN'
+curl https://api.dualmind.ai/v1/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479/messages \
+  -H 'Authorization: Bearer dm_test_xxxxxxxxxxxx'
 ```
 
 ```javascript JavaScript
 const response = await fetch(
-  'http://localhost:5079/api/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479/messages',
-  {
-    headers: { 'Authorization': `Bearer ${jwt}` }
-  }
+  'https://api.dualmind.ai/v1/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479/messages',
+  { headers: { 'Authorization': 'Bearer dm_test_xxxxxxxxxxxx' } }
 );
-
-const data = await response.json();
+const { items } = await response.json();
 ```
 
 ```python Python
 import requests
 
-response = requests.get(
-    'http://localhost:5079/api/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479/messages',
-    headers={'Authorization': f'Bearer {jwt}'}
-)
-
-messages = response.json()
+msgs = requests.get(
+    'https://api.dualmind.ai/v1/threads/f47ac10b-58cc-4372-a567-0e02b2c3d479/messages',
+    headers={'Authorization': 'Bearer dm_test_xxxxxxxxxxxx'}
+).json()
 ```
 </RequestExample>
 
 <ResponseExample>
-```json 200 Success
+```json 200 OK
 {
   "items": [
     {
-      "message_id": "msg-uuid-here",
-      "thread_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-      "prompt_text": "What is AI?",
-      "model1_id": "model-uuid-1",
-      "model2_id": "model-uuid-2",
-      "model1_response": "AI is artificial intelligence...",
-      "model2_response": "Artificial intelligence refers to...",
-      "comparison_id": "comparison-uuid",
-      "model1_time_ms": 450,
-      "model2_time_ms": 520,
-      "created_at": "2024-01-15T10:30:00.000Z"
+      "messageId": "msg_abc123",
+      "role": "user",
+      "content": "Explain quantum computing",
+      "createdAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "messageId": "msg_def456",
+      "role": "assistant",
+      "content": "Quantum computing uses qubits...",
+      "modelName": "llama-3.3-70b",
+      "createdAt": "2024-01-15T10:30:01.000Z"
     }
   ]
 }
 ```
 
-```json 404 NOT_FOUND
+```json 403 Forbidden
 {
-  "success": false,
-  "error": "Thread not found",
-  "code": "NOT_FOUND"
+  "error": "FORBIDDEN",
+  "message": "You do not have permission to view this thread."
 }
 ```
 
-```json 401 UNAUTHORIZED
+```json 404 Not Found
 {
-  "success": false,
-  "error": "Authentication required to access this thread",
-  "code": "UNAUTHORIZED"
-}
-```
-
-```json 403 FORBIDDEN
-{
-  "success": false,
-  "error": "You do not have access to this thread",
-  "code": "FORBIDDEN"
-}
-```
-
-```json 500 MESSAGES_ERROR
-{
-  "success": false,
-  "error": "Database query failed",
-  "code": "MESSAGES_ERROR"
+  "error": "NOT_FOUND",
+  "message": "Thread not found."
 }
 ```
 </ResponseExample>
-
-## Authorization Logic
-
-**Identical to GET /api/threads/{id}** (Lines 203-249):
-
-```csharp
-// First check thread access (same logic as GetThread)
-var thread = await _threadsService.GetThreadAsync(threadId);
-
-// Apply same visibility + feature flag checks
-if (!(publicSharingEnabled && (thread.Visibility == "public" || "unlisted"))) {
-    // Require auth + ownership check
-}
-```
-
-### Access Control Matrix
-
-| Flag | Visibility | Auth | Access |
-|------|-----------|------|--------|
-| ON | public | No | ✅ Allowed |
-| ON | unlisted | No | ✅ Allowed |
-| ON | private | No | ❌ 401 |
-| ON | private | Yes (owner) | ✅ Allowed |
-| ON | private | Yes (other) | ❌ 403 |
-| OFF | * | No | ❌ 401 |
-| OFF | * | Yes (owner) | ✅ Allowed |
-| OFF | * | Yes (other) | ❌ 403 |
-
-## Side Effects
-
-**Database Reads** (Lines 204, 216, 251):
-- SELECT from `threads` table WHERE `thread_id = {id}`
-- SELECT from `system_settings` table WHERE `key = 'public_sharing'`
-- SELECT from `thread_messages` table WHERE `thread_id = {id}`
-
-**No Database Writes**: Read-only endpoint
-
-**Message Ordering**: Not specified by API contract (service-defined, likely chronological)
-
-## Permissions
-
-**Same as Thread Access**:
-- If user can read thread, user can read messages
-- No separate message-level permissions
-
-**Cascade Rule**: Message visibility = Thread visibility
-
-## Edge Cases
-
-1. **Thread doesn't exist**: 404 (Lines 206-214)
-2. **Thread exists but has zero messages**: Returns `{"items": []}` (Line 253)
-3. **Invalid GUID format**: 400 (route constraint)
-4. **Deleted thread**: 404 (service returns null for thread)
-5. **Orphaned messages** (thread deleted): Cannot occur (thread lookup first)
-6. **Partial message data** (model2 null in single-chat): Nullable fields return null
-
-## Error Conditions
-
-| Code | HTTP | Cause | Controller Line |
-|------|------|-------|----------------|
-| `NOT_FOUND` | 404 | Thread doesn't exist | 206-214 |
-| `UNAUTHORIZED` | 401 | Auth required but missing | 230-238 |
-| `FORBIDDEN` | 403 | Private thread, wrong user | 240-248 |
-| `MESSAGES_ERROR` | 500 | Service exception | 255-263 |
-
-**Exception Handling** (Lines 255-263):
-```csharp
-catch (Exception ex) {
-    return StatusCode(500, new { error = ex.Message, code = "MESSAGES_ERROR" });
-}
-```
-
-## Behavioral Guarantees
-
-**Two-Step Verification** (Lines 204-249):
-1. Thread existence + access check
-2. Messages retrieval
-
-**Atomicity**: Not transactional
-- Thread could be deleted between checks (race condition)
-- Service behavior on race condition not enforced by server contract
-
-**Pagination**: Not supported
-- Returns ALL messages for thread
-- No limit parameter
-- Could cause performance issues for large threads
-
-## Performance Characteristics
-
-**Database Queries**: 3 queries per request
-1. Thread lookup
-2. Feature flag lookup
-3. Messages retrieval
-
-**Response Size**: Unbounded (proportional to message count)
-
-**Index Requirements**:
-- `thread_messages.thread_id` should be indexed
-- `threads.thread_id` primary key
-
-**Performance Risk**: Large threads (100+ messages) may cause slow responses
-
-## Message Schema Details
-
-**Single-Chat Mode**:
-- `model1_id`: Populated
-- `model2_id`: NULL
-- `model1_response`: Populated
-- `model2_response`: NULL
-- `comparison_id`: NULL
-
-**Dual-Chat Mode**:
-- `model1_id`: Populated
-- `model2_id`: Populated
-- `model1_response`: Populated
-- `model2_response`: Populated
-- `comparison_id`: Populated (links to `comparisons` table)
-
-**Comparison ID Usage**:
-- Can be used with GET /api/arena/model-stats to see vote data
-- Links message to arena comparison for voting

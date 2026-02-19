@@ -1,112 +1,101 @@
 ---
-title: "GET /api/arena/model-stats"
-api: "GET /api/arena/model-stats"
-description: "Retrieve model performance statistics"
+title: "Leaderboard"
+api: "GET https://api.dualmind.ai/v1/leaderboard"
+description: "Retrieve model performance statistics and current ELO rankings."
 ---
 
 ## Authentication
 
-**Required**: JWT Bearer token
+<ParamField header="Authorization" type="string" required>
+  ```
+  Authorization: Bearer dm_test_xxxxxxxxxxxx
+  ```
+</ParamField>
 
 ## Response
 
 <ResponseField name="items" type="array">
-  Array of model statistics objects
-  
+  An ordered list of models by ELO rating.
+
   <Expandable title="Model statistics object">
-    <ResponseField name="model_id" type="string">
-      Model UUID
+    <ResponseField name="modelName" type="string">
+      Model identifier (e.g., `llama-3.3-70b`).
     </ResponseField>
-    <ResponseField name="model_name" type="string">
-      Model identifier (e.g., `llama-3.3-70b-versatile`)
+    <ResponseField name="displayName" type="string">
+      Human-readable model name.
     </ResponseField>
-    <ResponseField name="display_name" type="string">
-      Human-readable model name
-    </ResponseField>
-    <ResponseField name="provider" type="string">
-      Provider name (`groq`, `bytez`, etc.)
-    </ResponseField>
-    <ResponseField name="total_votes" type="integer">
-      Total number of votes received
+    <ResponseField name="totalVotes" type="integer">
+      Total number of comparisons involving this model.
     </ResponseField>
     <ResponseField name="wins" type="integer">
-      Number of times voted as winner
+      Number of comparisons where this model was voted the winner.
     </ResponseField>
     <ResponseField name="losses" type="integer">
-      Number of times voted as loser
+      Number of comparisons where this model lost.
     </ResponseField>
     <ResponseField name="ties" type="integer">
-      Number of tie votes
+      Number of tie votes.
     </ResponseField>
-    <ResponseField name="win_rate" type="number">
-      Win percentage (0.0 to 1.0)
+    <ResponseField name="winRate" type="number">
+      Win percentage as a decimal (e.g., `0.585` = 58.5%).
     </ResponseField>
-    <ResponseField name="elo_rating" type="number">
-      Elo rating score (if implemented)
+    <ResponseField name="eloRating" type="number">
+      Current ELO rating score. Higher is better.
     </ResponseField>
-    <ResponseField name="last_voted_at" type="string">
-      ISO8601 UTC timestamp of most recent vote
+    <ResponseField name="lastVotedAt" type="string">
+      ISO 8601 timestamp of the most recent comparison involving this model.
     </ResponseField>
   </Expandable>
 </ResponseField>
 
 <RequestExample>
 ```bash cURL
-curl -X GET 'http://localhost:5079/api/arena/model-stats' \
-  -H 'Authorization: Bearer YOUR_JWT_TOKEN'
+curl https://api.dualmind.ai/v1/leaderboard \
+  -H 'Authorization: Bearer dm_test_xxxxxxxxxxxx'
 ```
 
 ```javascript JavaScript
-const response = await fetch('http://localhost:5079/api/arena/model-stats', {
-  headers: {
-    'Authorization': `Bearer ${jwt}`
-  }
+const response = await fetch('https://api.dualmind.ai/v1/leaderboard', {
+  headers: { 'Authorization': 'Bearer dm_test_xxxxxxxxxxxx' }
 });
-
-const stats = await response.json();
+const data = await response.json();
 ```
 
 ```python Python
 import requests
 
-response = requests.get(
-    'http://localhost:5079/api/arena/model-stats',
-    headers={'Authorization': f'Bearer {jwt}'}
-)
-
-stats = response.json()
+stats = requests.get(
+    'https://api.dualmind.ai/v1/leaderboard',
+    headers={'Authorization': 'Bearer dm_test_xxxxxxxxxxxx'}
+).json()
 ```
 </RequestExample>
 
 <ResponseExample>
-```json 200 Success
+```json 200 OK
 {
   "items": [
     {
-      "model_id": "model-uuid-1",
-      "model_name": "llama-3.3-70b-versatile",
-      "display_name": "Llama 3.3 70B",
-      "provider": "groq",
-      "total_votes": 1523,
+      "modelName": "llama-3.3-70b",
+      "displayName": "Llama 3.3 70B",
+      "totalVotes": 1523,
       "wins": 892,
       "losses": 431,
       "ties": 200,
-      "win_rate": 0.585,
-      "elo_rating": 1687,
-      "last_voted_at": "2024-01-15T10:30:00.000Z"
+      "winRate": 0.585,
+      "eloRating": 1687,
+      "lastVotedAt": "2024-01-15T10:30:00.000Z"
     },
     {
-      "model_id": "model-uuid-2",
-      "model_name": "mixtral-8x7b-32768",
-      "display_name": "Mixtral 8x7B",
-      "provider": "groq",
-      "total_votes": 1201,
+      "modelName": "mixtral-8x7b",
+      "displayName": "Mixtral 8x7B",
+      "totalVotes": 1201,
       "wins": 645,
       "losses": 398,
       "ties": 158,
-      "win_rate": 0.537,
-      "elo_rating": 1542,
-      "last_voted_at": "2024-01-15T09:15:00.000Z"
+      "winRate": 0.537,
+      "eloRating": 1542,
+      "lastVotedAt": "2024-01-15T09:15:00.000Z"
     }
   ]
 }
@@ -114,153 +103,7 @@ stats = response.json()
 
 ```json 401 Unauthorized
 {
-  "error": "Unauthorized"
-}
-```
-
-```json 500 STATS_ERROR
-{
-  "success": false,
-  "error": "Database query failed",
-  "code": "STATS_ERROR"
+  "error": "UNAUTHORIZED"
 }
 ```
 </ResponseExample>
-
-## Side Effects
-
-**Database Reads** (Line 88):
-```csharp
-var stats = await _modelStatsService.GetModelStatsAsync();
-```
-
-**Tables Read**:
-- `ai_models` table: Model metadata
-- `model_votes` table: Aggregated vote counts
-- Potential JOIN with `comparisons` table (service-level)
-
-**No Database Writes**: Read-only endpoint
-
-**Query Characteristics**:
-- Aggregation query (COUNT, SUM operations assumed)
-- Potentially expensive for large vote datasets
-
-## Authorization
-
-**Authentication**: Required (JWT Bearer)
-
-**Who Can Read**:
-- Any authenticated user
-
-**Data Visibility**:
-- Global statistics (not user-specific)
-- All users see same data
-
-## Permissions
-
-**No User Filtering**: Statistics global across all users
-
-**No Privacy Controls**: All model performance data public to authenticated users
-
-## Response Structure
-
-**Ordering**: Not specified by API contract (implementation-defined)
-- Ordering algorithm not enforced by server contract
-- No explicit sort parameter in controller
-
-**Pagination**: Not supported
-- Returns ALL models
-- Could cause performance issues if many models
-
-**Filtering**: Not supported
-- No query parameters for filtering by provider, win_rate, etc.
-
-## Edge Cases
-
-1. **No votes exist**: Behavior not enforced by server contract (empty array likely)
-2. **Model has zero votes**: Inclusion behavior not enforced by server contract
-3. **Models without votes**: Inclusion behavior not enforced by server contract
-4. **Inactive models**: Inclusion behavior not enforced by server contract
-5. **Very large result set**: No pagination, performance not guaranteed
-
-## Error Conditions
-
-| Code | HTTP | Cause | Controller Line |
-|------|------|-------|----------------|
-| N/A | 401 | JWT missing or invalid | Middleware |
-| `STATS_ERROR` | 500 | Service exception | 92-100 |
-
-**Exception Handling** (Lines 92-100):
-```csharp
-catch (Exception ex) {
-    return StatusCode(500, new { error = ex.Message, code = "STATS_ERROR" });
-}
-```
-- All service exceptions return 500
-- Exception message exposed to client
-
-## Behavioral Guarantees
-
-**Data Staleness**: Not specified by API contract
-- Cache behavior implementation-defined and not guaranteed
-- Real-time vs. cached not enforced by server contract
-
-**Consistency**: Not guaranteed
-- Votes in progress may not be reflected
-- Consistency model not enforced by server contract
-
-**Completeness**: Not specified by API contract
-
-## Calculation Methods
-
-**Win Rate** (service-level):
-- Calculation formula not enforced by server contract
-- Behavior when total_votes = 0 not specified by API contract
-
-**Elo Rating** (service-level):
-- Calculation algorithm not documented in controller
-- Null handling not enforced by server contract
-
-**Ties/Losses Counting** (service-level):
-- Vote counting logic not enforced by server contract
-- Increment semantics implementation-defined and not guaranteed
-
-## Performance Characteristics
-
-**Query Complexity**: Depends on service implementation
-- Simple aggregation: Fast
-- Complex Elo calculation: Slower
-
-**Index Requirements**:
-- `model_votes.model_id` should be indexed
-- `model_votes.created_at` for last_voted_at
-
-**Response Size**: Unbounded (proportional to number of models)
-
-**Caching**: Not enforced by server contract
-- Cache behavior implementation-defined and not guaranteed
-- Cache invalidation strategy not specified by API contract
-
-## Use Cases
-
-**Leaderboard Display**:
-- Sort by win_rate or elo_rating
-- Display top N models
-
-**Model Selection**:
-- Used by `GetTopperAndRandomModelAsync` for dual-chat topper mode
-- Selects highest-rated model
-
-**Analytics**:
-- Track model performance over time
-- Compare provider effectiveness
-
-## Data Freshness
-
-**Update Trigger**: Vote submission endpoint
-- Stats updated when vote recorded
-- Update timing not enforced by server contract (immediate vs. batch)
-
-**Stale Data Risk**: Data freshness not enforced by server contract
-
-**Real-Time Guarantee**: Not specified by API contract
