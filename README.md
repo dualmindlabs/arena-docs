@@ -6,8 +6,8 @@
 
 Official documentation for **DualMind Arena**, a real-time AI model evaluation platform.
 
-[![Live Platform](https://img.shields.io/badge/Platform-arena.dualmind.ai-teal)](https://arena.dualmind.ai)
-[![Documentation](https://img.shields.io/badge/Docs-docs.dualmind.ai-blue)](https://docs.dualmind.ai)
+[![Live Platform](https://img.shields.io/badge/Platform-arena.dualmind.ai-teal)](https://arena.dualmindlab.tech)
+[![Documentation](https://img.shields.io/badge/Docs-docs.dualmind.ai-blue)](https://docs.dualmindlab.tech)
 
 ---
 
