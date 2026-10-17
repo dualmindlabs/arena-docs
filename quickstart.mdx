@@ -1,83 +1,114 @@
 ---
-title: Quickstart
-description: Get started with DualMind Arena — your guide to blind AI model comparison and evaluation.
-keywords: ["quickstart", "getting started", "AI arena", "model comparison"]
+title: "Quickstart"
+description: "Run your first blind battle in about two minutes, in the Arena or from code."
+keywords: ["quickstart", "getting started", "AI arena", "first battle"]
+icon: "rocket"
 ---
 
-<Info>
-**Time to first comparison**: ~2 minutes. You'll be comparing leading AI models side-by-side in moments.
-</Info>
+<Tabs>
+  <Tab title="In the Arena" icon="swords">
+    <Steps>
+      <Step title="Sign in">
+        Open [arena.dualmindlab.tech](https://arena.dualmindlab.tech) and sign in with email, phone, GitHub or Google. Accounts are free.
 
-## Prerequisites
+        <Frame caption="The Arena sign-in screen">
+          <img src="/images/arena-sign-in.jpg" alt="DualMind Arena sign-in screen with email, phone, GitHub and Google options" />
+        </Frame>
+      </Step>
+      <Step title="Stay in Battle mode">
+        The Arena opens in **Battle** mode: two anonymous models, picked at random. You can switch to **Side by Side** (you choose both models) or **Direct Chat** (one model) from the mode menu at the top. See [Arena modes](/concepts/model-comparison).
+      </Step>
+      <Step title="Send a prompt">
+        Type a prompt and press Enter. Both models answer the same prompt at the same time, labelled **Model A** and **Model B**.
 
-<AccordionGroup>
-  <Accordion title="DualMind Account" icon="user">
-    Sign up for a free account at [arena.dualmindlab.tech](https://arena.dualmindlab.tech).
-    
-    You can use:
-    - Google Sign-In (Recommended)
-    - Email & Password
-  </Accordion>
+        <Tip>
+          Open-ended prompts reveal more than trivia. Try: *"Explain the difference between TCP and UDP to a five-year-old using a pizza delivery analogy."*
+        </Tip>
+      </Step>
+      <Step title="Vote">
+        Read both answers, then choose **Left is better**, **Right is better**, **It's a tie** or **Both are bad**. One vote per battle; it can't be changed.
+      </Step>
+      <Step title="See who you picked">
+        After your vote the model names are revealed and your vote counts toward the [leaderboard](/concepts/leaderboard). Keep going in the same thread, or [share it](/concepts/threads) with a link.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="From code" icon="terminal">
+    The Arena runs on a public REST API at `https://api.dualmindlab.tech`. Reading the leaderboard needs no account:
 
-  <Accordion title="Basic AI Knowledge" icon="brain">
-    Familiarity with prompting (e.g., "Write a poem about rust" or "Explain quantum computing") helps you create better comparisons.
-  </Accordion>
-</AccordionGroup>
+    <CodeGroup>
+    ```bash cURL
+    curl https://api.dualmindlab.tech/api/arena/model-stats
+    ```
 
-## Start Comparing
+    ```javascript JavaScript
+    const res = await fetch("https://api.dualmindlab.tech/api/arena/model-stats");
+    const { items } = await res.json();
+    console.table(items.slice(0, 5).map(m => ({ rank: m.eloRank, model: m.displayName, elo: m.eloScore })));
+    ```
 
-<Steps>
-  <Step title="Login to the Arena">
-    Navigate to [arena.dualmindlab.tech](https://arena.dualmindlab.tech) and log in.
-    
-    You'll land on the main **Arena Battle** interface.
-  </Step>
+    ```python Python
+    import requests
 
-  <Step title="Select a Mode">
-    Choose your comparison mode:
-    
-    - **Random Battle**: Pit two random models against each other (Best for unbiased discovery)
-    - **Topper Battle**: Challenge the current leaderboard champion against a random contender
-    - **Manual Selection**: Pick specific models to compare directly (Great for A/B testing)
-  </Step>
+    items = requests.get("https://api.dualmindlab.tech/api/arena/model-stats").json()["items"]
+    for m in items[:5]:
+        print(m["eloRank"], m["displayName"], m["eloScore"])
+    ```
+    </CodeGroup>
 
-  <Step title="Enter Your Prompt">
-    Type a prompt into the chat box.
-    
-    <Tip>
-    **Pro Tip**: Use complex, open-ended prompts to reveal subtle differences in model reasoning, creativity, and instruction following.
-    </Tip>
-    
-    Example: *"Explain the difference between TCP and UDP to a 5-year-old using a pizza delivery analogy."*
-  </Step>
+    Battles and votes need a signed-in user. Grab your access token ([how](/api-reference/authentication)), then start a battle:
 
-  <Step title="Vote on the Winner">
-    Two anonymous models will generate responses side-by-side. Read both and vote:
-    
-    - **Left is Better**: The left model gave a superior answer
-    - **Right is Better**: The right model gave a superior answer
-    - **Tie**: Both answers were equally good
-    - **Both Bad**: Neither answer was helpful
-    
-    <Check>
-    After voting, the model identities are revealed! You'll see exactly which models you just compared.
-    </Check>
-  </Step>
-</Steps>
+    <CodeGroup>
+    ```bash cURL
+    curl https://api.dualmindlab.tech/api/arena/dualchat \
+      -H "Authorization: Bearer $DUALMIND_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{"prompt": "Write a haiku about distributed systems", "selectionMode": "random"}'
+    ```
 
-## Next Steps
+    ```javascript JavaScript
+    const res = await fetch("https://api.dualmindlab.tech/api/arena/dualchat", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.DUALMIND_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ prompt: "Write a haiku about distributed systems", selectionMode: "random" }),
+    });
+    const battle = await res.json();
+    console.log(battle.comparisonId, battle.agent1.message, battle.agent2.message);
+    ```
+
+    ```python Python
+    import os, requests
+
+    battle = requests.post(
+        "https://api.dualmindlab.tech/api/arena/dualchat",
+        headers={"Authorization": f"Bearer {os.environ['DUALMIND_TOKEN']}"},
+        json={"prompt": "Write a haiku about distributed systems", "selectionMode": "random"},
+        timeout=120,
+    ).json()
+    print(battle["comparisonId"], battle["agent1"]["message"], battle["agent2"]["message"])
+    ```
+    </CodeGroup>
+
+    Then vote with the `comparisonId`. The [Run a battle](/api-reference/guides/run-a-battle) tutorial walks through the whole flow.
+  </Tab>
+</Tabs>
+
+## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Understand Scoring" icon="chart-line" href="/concepts/model-comparison">
-    Learn how the ELO rating system ranks models based on your votes.
+  <Card title="Arena modes" icon="swords" href="/concepts/model-comparison">
+    Battle, Side by Side, Direct Chat, and the Topper mode in the API.
   </Card>
-  <Card title="API Reference" icon="code" href="/api-reference/introduction">
-    Integrate DualMind comparisons directly into your own applications.
+  <Card title="How votes become rankings" icon="trophy" href="/concepts/leaderboard">
+    ELO, ranks and win rates, explained.
   </Card>
-  <Card title="Share Results" icon="share-nodes" href="/concepts/threads">
-    Learn how to share your interesting comparisons with the community.
+  <Card title="Threads and sharing" icon="share-2" href="/concepts/threads">
+    Save battles and share them with a link.
   </Card>
-  <Card title="Explore Models" icon="robot" href="/concepts/model-comparison">
-    Discover the strengths and weaknesses of different AI models.
+  <Card title="API reference" icon="code" href="/api-reference/introduction">
+    Every public endpoint, with a live playground.
   </Card>
 </CardGroup>

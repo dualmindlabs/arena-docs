@@ -1,43 +1,85 @@
 ---
-title: "Latency & Performance"
-sidebarTitle: "Latency"
-description: "How DualMind Arena measures model speed and handles real-time streaming performance."
-keywords: ["latency", "speed", "tokens per second", "ttft"]
+title: "Latency and speed"
+sidebarTitle: "Latency and speed"
+description: "What DualMind measures about speed, how it keeps speed out of the vote, and how to read the numbers."
+keywords: ["latency", "speed", "response time", "tokens"]
+icon: "timer"
 ---
 
-## Measuring Performance
+Speed matters when you pick a model for a product, but it shouldn't decide which answer is **better**. DualMind records speed and token usage, and keeps both out of the ranking.
 
-In addition to response quality, DualMind Arena tracks model execution speed. For many applications, a slightly "worse" model might be preferred if it is significantly faster and cheaper.
+## What is recorded
 
-We track several key metrics for every generation:
+<ResponseField name="responseTimeMs" type="integer">
+  Wall-clock time of the request in milliseconds, measured by the API. In a battle both models run in parallel, so this is the time until **both** answers were ready.
+</ResponseField>
+<ResponseField name="usage" type="object">
+  Token counts reported by the provider: `promptTokens`, `completionTokens` and `totalTokens`.
+</ResponseField>
+<ResponseField name="model1TimeMs / model2TimeMs" type="integer">
+  The response time stored with each turn of a [thread](/concepts/threads).
+</ResponseField>
 
-### 1. Time to First Token (TTFT)
-The time elapsed between sending your request and receiving the very first character of the response.
-- **Why it matters**: Crucial for perceived responsiveness in chat applications.
-- **Typical values**: < 200ms (Excellent) to > 1000ms (Sluggish).
+<Note>
+  Time to first token and tokens per second aren't reported yet. Use the [streaming endpoint](/api-reference/guides/streaming) if you want to measure them yourself.
+</Note>
 
-### 2. Output Speed (Tokens/Sec)
-How fast the model generates text once it starts writing.
-- **Why it matters**: Determines how quickly a long summary or code block finishes.
-- **Typical values**: 30 t/s (Readable) to 100+ t/s (Instant).
+## Keeping speed out of the vote
 
-### 3. Total Latency
-The total wall-clock time from request to completion.
+<CardGroup cols={2}>
+  <Card title="Parallel generation" icon="git-compare-arrows">
+    Both models get the prompt at the same moment, under the same limits.
+  </Card>
+  <Card title="Shown together" icon="columns-2">
+    Battle answers appear side by side once both are ready, so a faster model doesn't get read first.
+  </Card>
+  <Card title="Not part of ELO" icon="trophy">
+    The leaderboard only counts votes. Speed never adds or removes points.
+  </Card>
+  <Card title="Same settings" icon="sliders-horizontal">
+    Same `maxTokens` (4096 by default) and `temperature` (0.7) for both sides.
+  </Card>
+</CardGroup>
 
-## The Trade-off Triangle
+## Why speed and quality are kept apart
 
-When evaluating models in the Arena, you'll often notice a trade-off:
+A fast answer feels fluent before you've read a word, and a slow one gives you more time to spot flaws. Speed also depends on where a model is hosted and how busy the provider is, not only on the model. Folding it into quality would make the leaderboard partly a hosting benchmark.
 
-1.  **Quality** (Reasoning depth)
-2.  **Speed** (Inference velocity)
-3.  **Cost** (Compute resources)
+## Measure it yourself
 
-frontier models often maximize Quality but sacrifice Speed. Distilled or quantized models maximize Speed often at a slight cost to Quality.
+<CodeGroup>
+```javascript JavaScript
+const t0 = performance.now();
+const res = await fetch("https://api.dualmindlab.tech/api/arena/chat/stream", {
+  method: "POST",
+  headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+  body: JSON.stringify({ prompt: "Summarise the plot of Hamlet in three lines", model: "llama-3.1-8b-instant" }),
+});
+const reader = res.body.getReader();
+let first = null;
+for (;;) {
+  const { done } = await reader.read();
+  if (done) break;
+  first ??= performance.now() - t0; // time to first chunk
+}
+console.log({ timeToFirstChunkMs: Math.round(first), totalMs: Math.round(performance.now() - t0) });
+```
 
-DualMind Arena exposes these trade-offs by showing you the generation time alongside the response, allowing you to vote based on your own priority (e.g., "This answer was slightly worse, but it was 5x faster, so I prefer it").
+```python Python
+import time, requests
 
-## Streaming Architecture
-
-To ensure the fairest comparison, DualMind uses high-performance streaming connections for all models. This ensures that you see the text generation in real-time as it happens, mimicking the actual experience of using these models in a production application.
-
-Code blocks, markdown rendering, and syntax highlighting are applied on-the-fly, ensuring that a faster model's output is rendered just as beautifully as a slower one.
+t0 = time.perf_counter()
+first = None
+with requests.post(
+    "https://api.dualmindlab.tech/api/arena/chat/stream",
+    headers={"Authorization": f"Bearer {token}"},
+    json={"prompt": "Summarise the plot of Hamlet in three lines", "model": "llama-3.1-8b-instant"},
+    stream=True,
+    timeout=120,
+) as r:
+    for chunk in r.iter_content(chunk_size=None):
+        if first is None:
+            first = time.perf_counter() - t0
+print({"time_to_first_chunk_s": round(first, 3), "total_s": round(time.perf_counter() - t0, 3)})
+```
+</CodeGroup>

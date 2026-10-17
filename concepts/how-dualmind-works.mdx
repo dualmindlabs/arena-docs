@@ -1,60 +1,103 @@
 ---
-title: "How DualMind Works"
-sidebarTitle: "How it Works"
-description: "Understand the core mechanics of DualMind Arena — from blind model comparison to ELO scoring."
-keywords: ["concepts", "mechanics", "elo", "blind testing", "model comparison"]
+title: "How DualMind works"
+sidebarTitle: "Architecture"
+description: "The moving parts behind a battle: the Arena app, the DualMind API on Cloudflare, sign-in, the model providers and the leaderboard."
+keywords: ["architecture", "how it works", "cloudflare", "supabase", "request flow"]
+icon: "workflow"
 ---
 
-## The Blind Comparison Concept
+DualMind Arena is a web app backed by one REST API. The API picks models, calls the providers in parallel, stores the battle, and records votes that feed the leaderboard.
 
-The most effective way to evaluate AI models is to remove brand bias. If you know a response comes from "GPT-4" or "Claude 3.5 Sonnet", you are subconsciously primed to rate it higher.
+## The big picture
 
-DualMind Arena solves this with **Blind Battles**:
+```mermaid
+flowchart LR
+    U([You]) --> UI["Arena app<br/>arena.dualmindlab.tech"]
+    UI -- "sign in" --> Auth["Supabase Auth"]
+    UI -- "HTTPS + Bearer token" --> API["DualMind API<br/>api.dualmindlab.tech<br/>(Cloudflare)"]
+    API --> G["Groq"]
+    API --> GA["Google AI Studio"]
+    API --> CF["Cloudflare Workers AI"]
+    API <--> DB[("Arena data<br/>threads · battles · votes")]
+    classDef dm fill:#00D9FF1F,stroke:#0B7FA0,stroke-width:1px
+    classDef dmv fill:#8B5CF61F,stroke:#7C3AED,stroke-width:1px
+    classDef dmn fill:#8C919A14,stroke:#8C919A,stroke-width:1px
+    class UI,API dm
+    class U,Auth,DB dmn
+    class G,GA,CF dmv
+```
 
-1. **Submit a Prompt**: You send a single prompt to the arena.
-2. **Anonymous Generation**: Two different models generate responses simultaneously. Labels are hidden (e.g., "Model A" vs "Model B").
-3. **Vote**: You select the better response based purely on quality, accuracy, and helpfulness.
-4. **Reveal**: Only *after* you vote are the model identities revealed.
+<CardGroup cols={2}>
+  <Card title="Arena app" icon="app-window">
+    A fast static web app served from Cloudflare's network. It handles sign-in, the battle UI, voting, threads and sharing.
+  </Card>
+  <Card title="DualMind API" icon="server">
+    An ASP.NET Core service running in containers on Cloudflare, at `api.dualmindlab.tech`. Every Arena action goes through it.
+  </Card>
+  <Card title="Sign-in" icon="key-round">
+    Accounts and sessions use Supabase Auth (email, phone, GitHub, Google). The API checks the session's access token on each request.
+  </Card>
+  <Card title="Model providers" icon="cpu">
+    Groq, Google AI Studio and Cloudflare Workers AI. See [Models and providers](/concepts/models-and-providers).
+  </Card>
+</CardGroup>
 
-This methodology creates a dataset of pure quality preference, unpolluted by marketing or brand reputation.
+## Life of a battle
 
-## The ELO Rating System
-
-We use the **ELO rating system** — the same system used in Chess and competitive video games — to rank AI models.
-
-- **Starting Score**: All models start with a baseline rating (e.g., 1000).
-- **Winning**: Beating a high-rated model awards more points than beating a low-rated one.
-- **Losing**: Losing to a low-rated model costs more points than losing to a highly-rated champion.
-- **Ties**: Points are distributed based on the rating difference (a lower-rated model drawing with a higher-rated one gains points).
-
-This system is self-correcting. Over thousands of battles, it produces a highly accurate hierarchy of model capability that reflects real-world usage patterns rather than abstract benchmarks.
-
-## Data Processing Pipeline
-
-When you submit a prompt to DualMind Arena, our platform orchestrates a complex evaluation pipeline in milliseconds:
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as You
+    participant App as Arena app
+    participant API as DualMind API
+    participant P as Providers
+    participant DB as Arena data
+    U->>App: Prompt
+    App->>API: POST /api/arena/dualchat
+    API->>API: Verify token, pick 2 models
+    par Model A
+        API->>P: Generate A
+    and Model B
+        API->>P: Generate B
+    end
+    P-->>API: Answers A and B
+    API->>DB: Save battle + thread turn
+    API-->>App: Answers + comparisonId
+    App-->>U: A and B, names hidden
+    U->>App: Vote
+    App->>API: POST /api/arena/model-vote
+    API->>DB: Store vote, reveal
+    App-->>U: Names revealed
+```
 
 <Steps>
-  <Step title="Safety & Moderation">
-    Incoming prompts are scanned for safety policy compliance to ensuring the arena remains a constructive environment.
+  <Step title="Authenticate">
+    The app sends your session's access token with each request. Battles, votes and private threads require it; the leaderboard, health check and shared threads don't.
   </Step>
-
-  <Step title="Model Orchestration">
-    The system selects model pairs based on your chosen mode (Random, Topper, or Manual) and routes the request to the appropriate inference providers.
+  <Step title="Pick the models">
+    Random, Topper or your own picks, depending on the [mode](/concepts/model-comparison).
   </Step>
-
-  <Step title="Parallel Inference">
-    Both models process the prompt simultaneously. We normalize response times to ensure speed differences don't bias your voting decision (unless speed is your specific criteria).
+  <Step title="Generate in parallel">
+    Both models get the same prompt, system prompt, token limit and temperature, at the same time. Each call has a 60 second limit with an automatic [fallback](/concepts/models-and-providers#when-a-model-is-unavailable).
   </Step>
-
-  <Step title="Response Normalization">
-    Markdown formatting, code blocks, and LaTeX math are standardized to ensure visual consistency between different models' outputs.
+  <Step title="Store">
+    The battle is stored as a comparison with its own ID, and the turn is added to your thread.
+  </Step>
+  <Step title="Vote and reveal">
+    Your vote is stored once per battle, the battle is marked revealed, and the leaderboard stats pick it up.
   </Step>
 </Steps>
 
-## Platform Architecture
+## Built to stay up
 
-DualMind is built for high availability and low latency.
-
-- **Global Edge Network**: Our frontend is served from edge locations worldwide to minimize initial load time.
-- **Provider Resilience**: We integrate with multiple AI inference providers. If one provider experiences downtime, traffic is automatically rerouted to ensure the arena remains active.
-- **Live Leaderboards**: Voting data is processed in real-time, meaning the leaderboard you see always reflects the very latest community consensus.
+<AccordionGroup>
+  <Accordion title="Always warm" icon="flame">
+    The API runs in containers on Cloudflare and is pinged every few minutes, so requests rarely hit a cold start.
+  </Accordion>
+  <Accordion title="Provider fallback" icon="life-buoy">
+    If a provider errors or times out, the API answers with a fallback model and labels the reply, instead of failing the whole battle.
+  </Accordion>
+  <Accordion title="Health endpoint" icon="activity">
+    [`GET /health`](/api-reference/utilities/health) reports whether the API is up. It's public, so you can point an uptime monitor at it.
+  </Accordion>
+</AccordionGroup>

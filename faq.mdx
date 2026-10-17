@@ -1,71 +1,86 @@
 ---
-title: "Frequently Asked Questions"
+title: "Frequently asked questions"
 sidebarTitle: "FAQ"
-description: "Common questions about DualMind Arena — model comparisons, voting mechanics, and API usage."
-keywords: ["FAQ", "help", "support", "troubleshooting", "API limits"]
+description: "Common questions about DualMind Arena: battles, voting, the leaderboard, privacy and the API."
+keywords: ["FAQ", "help", "support", "troubleshooting"]
+icon: "life-buoy"
 ---
 
-# Frequently Asked Questions
-
-Find answers to common questions about the DualMind Arena platform.
-
-## General
+## The Arena
 
 <AccordionGroup>
   <Accordion title="What is DualMind Arena?">
-    DualMind Arena is a crowdsourced AI evaluation platform. It allows you to compare two AI models side-by-side using the same prompt. By voting on the better response without knowing the model names beforehand ("blind testing"), the community creates an unbiased leaderboard of model quality.
+    A free arena at [arena.dualmindlab.tech](https://arena.dualmindlab.tech). In **Battle** mode two anonymous models answer the same prompt; you pick the better one, call a tie, or mark both bad, and the names appear after your vote. **Side by Side** lets you choose the two models, and **Direct Chat** lets you try one on its own. Every vote feeds a live leaderboard.
   </Accordion>
-  
-  <Accordion title="Is DualMind free to use?">
-    Yes! The platform is free for public use to help democratize AI evaluation.
+  <Accordion title="Is it free?">
+    Yes. Sign in with email, phone, GitHub or Google and start battling.
   </Accordion>
-  
-  <Accordion title="Why blind comparison?">
-    Knowing a model's name (e.g., "GPT-4" or "Claude 3") creates subconscious bias. Blind comparison forces you to evaluate the *content* of the response, not the *brand* of the model, leading to more accurate quality data.
+  <Accordion title="Why are the models anonymous?">
+    Knowing a model's name changes how you judge its answer. Hiding names until you vote keeps the comparison about the content. See [Evaluation philosophy](/concepts/evaluation-philosophy).
+  </Accordion>
+  <Accordion title="Which models can I battle?">
+    50+ models from Groq, Google AI Studio and Cloudflare Workers AI. Random battles use Groq and Google AI Studio models; Cloudflare models are available when you pick them in Side by Side or Direct Chat. See [Models and providers](/concepts/models-and-providers).
+  </Accordion>
+  <Accordion title="An answer starts with “[System Note]”. What happened?">
+    The model that was picked was unavailable or took longer than 60 seconds, so a fallback model answered instead. You're comparing the fallback, so consider skipping the vote.
   </Accordion>
 </AccordionGroup>
 
-## Comparisons & Voting
+## Voting and the leaderboard
 
 <AccordionGroup>
-  <Accordion title="How are models selected?">
-    In **Random Mode**, the system selects two different models from the active pool at random.
-    In **Topper Mode**, the current highest-ranked model is paired against a random challenger.
-    In **Manual Mode**, you explicitly choose which two models to compare.
-  </Accordion>
-  
   <Accordion title="How is the leaderboard calculated?">
-    We use an ELO rating system similar to chess. When Model A beats Model B, Model A gains points and Model B loses points. The amount of points depends on the rating difference — beating a high-rated model awards more points than beating a low-rated one.
+    With ELO, the rating system used in chess. Every model starts at 1000; winning moves points from the loser to the winner, and beating a stronger model earns more. See [Leaderboard](/concepts/leaderboard).
   </Accordion>
-  
   <Accordion title="Can I change my vote?">
-    Votes are final once submitted to ensure the integrity of the leaderboard and prevent manipulation.
+    No. Each battle takes one vote per person, and it's final. That keeps the leaderboard hard to game.
+  </Accordion>
+  <Accordion title="What's the difference between “tie” and “both are bad”?">
+    **Tie** means both answers were good. **Both are bad** means neither helped. Neither records a winner, but they mean very different things, so please pick the honest one.
+  </Accordion>
+  <Accordion title="Why does a model with a high win rate rank lower than one with a lower win rate?">
+    ELO weighs **who** a model beat. Many wins against weak opponents count for less than fewer wins against strong ones. Also check the battle count: small samples are noisy.
   </Accordion>
 </AccordionGroup>
 
-## API & Integration
+## Threads and privacy
 
 <AccordionGroup>
-  <Accordion title="How do I access the API?">
-    You can attain an API token by logging into the web interface. This token allows you to submit prompts, retrieve comparisons, and vote programmatically. See the [API Reference](/api-reference/introduction) for details.
+  <Accordion title="Who can see my conversations?">
+    Threads are **private** by default: only you can open them. You can make a thread **unlisted** (anyone with the link) or **public** from the share dialog. See [Threads and sharing](/concepts/threads).
   </Accordion>
-  
-  <Accordion title="Is there a rate limit?">
-    Yes, to ensure fair usage for everyone, the API has rate limits. Authenticated users have higher limits than anonymous usage.
+  <Accordion title="Can I delete a thread?">
+    Yes, from the sidebar in the Arena, or with [`DELETE /api/threads/{threadId}`](/api-reference/threads/delete-thread). Deletion can't be undone.
   </Accordion>
-  
-  <Accordion title="Can I use DualMind for commercial benchmarking?">
-    Please contact us for enterprise licenses or commercial usage of the comparison data and API.
+  <Accordion title="Where's the privacy policy?">
+    At [dualmindlab.tech/privacy](https://dualmindlab.tech/privacy). Privacy questions go to [privacy@dualmindlab.tech](mailto:privacy@dualmindlab.tech).
   </Accordion>
 </AccordionGroup>
 
-## Still have questions?
+## API
+
+<AccordionGroup>
+  <Accordion title="Is there a public API?">
+    Yes, in beta. It's the same API the Arena uses, at `https://api.dualmindlab.tech`. Start with the [API overview](/api-reference/introduction).
+  </Accordion>
+  <Accordion title="How do I authenticate?">
+    With the access token from your Arena session, sent as `Authorization: Bearer <token>`. The leaderboard, health check and shared threads need no token. See [Authentication](/api-reference/authentication).
+  </Accordion>
+  <Accordion title="Do you have API keys?">
+    Not yet. Session tokens are short-lived; long-lived personal API keys are on the [roadmap](/roadmap).
+  </Accordion>
+  <Accordion title="Can I use DualMind for commercial benchmarking?">
+    Get in touch at [hello@dualmindlab.tech](mailto:hello@dualmindlab.tech).
+  </Accordion>
+</AccordionGroup>
+
+## Still stuck?
 
 <CardGroup cols={2}>
-  <Card title="API Reference" icon="code" href="/api-reference/introduction">
-    Technical documentation for developers
+  <Card title="Email support" icon="mail" href="mailto:support@dualmindlab.tech">
+    support@dualmindlab.tech
   </Card>
-  <Card title="Live Platform" icon="play" href="https://arena.dualmindlab.tech">
-    Experience the arena yourself
+  <Card title="API status" icon="activity" href="https://api.dualmindlab.tech/health">
+    Check that the API is up.
   </Card>
 </CardGroup>
