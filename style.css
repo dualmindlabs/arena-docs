@@ -1,0 +1,189 @@
+/*
+ * DualMind docs brand layer.
+ * Matches dualmindlab.tech: Bricolage Grotesque (set in docs.json), DM Mono labels,
+ * Playfair Display italic for the "human voice", cyan and violet for the two minds.
+ * Kept deliberately small: Mintlify components do the heavy lifting.
+ */
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap");
+
+:root {
+  --dm-cyan: #0b7fa0;
+  --dm-violet: #7c3aed;
+  --dm-ink: #0f1115;
+  --dm-muted: #5b616b;
+  --dm-line: rgba(15, 17, 21, 0.1);
+  --dm-surface: #f6f7f9;
+  --dm-glow-a: rgba(0, 217, 255, 0.16);
+  --dm-glow-b: rgba(139, 92, 246, 0.14);
+}
+
+.dark {
+  --dm-cyan: #00d9ff;
+  --dm-violet: #a78bfa;
+  --dm-ink: #e6e8eb;
+  --dm-muted: #8c919a;
+  --dm-line: rgba(230, 232, 235, 0.1);
+  --dm-surface: #161a20;
+  --dm-glow-a: rgba(0, 217, 255, 0.14);
+  --dm-glow-b: rgba(139, 92, 246, 0.18);
+}
+
+/* Code uses the arena's mono face */
+code,
+pre,
+kbd {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ---------- Hero (welcome / landing pages) ---------- */
+.dm-hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 3rem 2rem 2.5rem;
+  margin: 0 0 2.5rem;
+  border: 1px solid var(--dm-line);
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(60% 80% at 85% 20%, var(--dm-glow-b), transparent 70%),
+    radial-gradient(55% 75% at 10% 0%, var(--dm-glow-a), transparent 70%),
+    var(--dm-surface);
+}
+
+.dm-hero::after {
+  /* faint particle field, echoing the landing page's two minds */
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: radial-gradient(currentColor 0.6px, transparent 0.6px);
+  background-size: 14px 14px;
+  color: var(--dm-line);
+  mask-image: radial-gradient(70% 90% at 80% 30%, #000, transparent 75%);
+  -webkit-mask-image: radial-gradient(70% 90% at 80% 30%, #000, transparent 75%);
+}
+
+.dm-eyebrow {
+  display: inline-block;
+  margin: 0 0 1rem;
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--dm-cyan);
+}
+
+.dm-hero-title {
+  margin: 0;
+  font-size: clamp(2rem, 4.5vw, 3.1rem);
+  line-height: 1.05;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  color: var(--dm-ink);
+}
+
+.dm-human {
+  display: block;
+  font-family: "Playfair Display", Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--dm-cyan);
+}
+
+.dm-hero-lede {
+  max-width: 38rem;
+  margin: 1.25rem 0 0;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--dm-muted);
+}
+
+.dm-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+
+.dm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.1rem;
+  border-radius: 0.6rem;
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none !important;
+  border: 1px solid var(--dm-line);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.dm-btn:hover {
+  transform: translateY(-1px);
+}
+
+.dm-btn-primary {
+  background: var(--dm-ink);
+  color: var(--dm-surface) !important;
+  border-color: transparent;
+}
+
+.dm-btn-primary:hover {
+  box-shadow: 0 0 0 4px var(--dm-glow-a);
+}
+
+.dm-btn-ghost {
+  color: var(--dm-ink) !important;
+  background: transparent;
+}
+
+.dm-btn-ghost:hover {
+  border-color: var(--dm-cyan);
+}
+
+.dm-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px dashed var(--dm-line);
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dm-muted);
+}
+
+.dm-stats strong {
+  color: var(--dm-ink);
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  .dm-hero {
+    padding: 2rem 1.25rem 1.75rem;
+    border-radius: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dm-btn {
+    transition: none;
+  }
+  .dm-btn:hover {
+    transform: none;
+  }
+}
+
+/* Section titles on frame-mode landing pages */
+.dm-h2 {
+  margin: 3rem 0 1.25rem;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--dm-ink);
+}
