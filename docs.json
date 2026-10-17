@@ -10,9 +10,9 @@
   },
   "favicon": "/favicon.png",
   "colors": {
-    "primary": "#0B7FA0",
+    "primary": "#09738F",
     "light": "#00D9FF",
-    "dark": "#0B7FA0"
+    "dark": "#09738F"
   },
   "background": {
     "color": {
