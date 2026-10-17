@@ -4,13 +4,16 @@ sidebarTitle: "Overview"
 description: "The REST API behind DualMind Arena: battles, votes, the leaderboard, models and threads."
 keywords: ["API", "REST", "integration", "developers", "base url"]
 icon: "code"
+tag: "Beta"
 ---
+
+import ApiBeta from "/snippets/api-beta.mdx"
 
 The Arena app is a client of a public REST API. Everything you can do in the Arena (start a battle, vote, browse the leaderboard, manage threads) you can do over HTTPS.
 
 <CardGroup cols={2}>
   <Card title="Base URL" icon="globe">
-    `https://api.dualmindlab.tech`
+    `{{apiBase}}`
   </Card>
   <Card title="Format" icon="braces">
     JSON in, JSON out (camelCase). Streaming uses Server-Sent Events.
@@ -23,9 +26,7 @@ The Arena app is a client of a public REST API. Everything you can do in the Are
   </Card>
 </CardGroup>
 
-<Warning>
-  The API is in **beta**. It's the same API the Arena uses, so it's stable in practice, but fields can be added and behaviour can change. Watch the [changelog](/changelog).
-</Warning>
+<ApiBeta />
 
 ## Endpoints at a glance
 
@@ -48,17 +49,17 @@ No token needed for the leaderboard:
 
 <CodeGroup>
 ```bash cURL
-curl https://api.dualmindlab.tech/api/arena/model-stats
+curl {{apiBase}}/api/arena/model-stats
 ```
 
 ```javascript JavaScript
-const res = await fetch("https://api.dualmindlab.tech/api/arena/model-stats");
+const res = await fetch("{{apiBase}}/api/arena/model-stats");
 console.log((await res.json()).items[0]);
 ```
 
 ```python Python
 import requests
-print(requests.get("https://api.dualmindlab.tech/api/arena/model-stats", timeout=30).json()["items"][0])
+print(requests.get("{{apiBase}}/api/arena/model-stats", timeout=30).json()["items"][0])
 ```
 </CodeGroup>
 

@@ -84,7 +84,7 @@ If the fallback also fails, the answer text says the model is temporarily unavai
 <CodeGroup>
 ```javascript JavaScript
 async function dualmind(path, { token, ...init } = {}) {
-  const res = await fetch(`https://api.dualmindlab.tech${path}`, {
+  const res = await fetch(`{{apiBase}}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...(token && { Authorization: `Bearer ${token}` }), ...init.headers },
   });
@@ -103,7 +103,7 @@ import requests
 
 def dualmind(method, path, token=None, **kw):
     headers = {"Authorization": f"Bearer {token}"} if token else {}
-    r = requests.request(method, f"https://api.dualmindlab.tech{path}", headers=headers, timeout=120, **kw)
+    r = requests.request(method, f"{{apiBase}}{path}", headers=headers, timeout=120, **kw)
     if r.status_code == 401:
         raise RuntimeError(f"Unauthorized: {r.headers.get('WWW-Authenticate', 'sign in again')}")
     body = r.json() if "json" in r.headers.get("Content-Type", "") else None
@@ -115,5 +115,5 @@ def dualmind(method, path, token=None, **kw):
 </CodeGroup>
 
 <Tip>
-  Include the `X-Correlation-Id` response header when you contact [support@dualmindlab.tech](mailto:support@dualmindlab.tech). It lets us find your request in the logs.
+  Include the `X-Correlation-Id` response header when you contact [support@dualmindlab.tech](mailto:{{supportEmail}}). It lets us find your request in the logs.
 </Tip>

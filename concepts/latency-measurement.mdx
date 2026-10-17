@@ -50,7 +50,7 @@ A fast answer feels fluent before you've read a word, and a slow one gives you m
 <CodeGroup>
 ```javascript JavaScript
 const t0 = performance.now();
-const res = await fetch("https://api.dualmindlab.tech/api/arena/chat/stream", {
+const res = await fetch("{{apiBase}}/api/arena/chat/stream", {
   method: "POST",
   headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
   body: JSON.stringify({ prompt: "Summarise the plot of Hamlet in three lines", model: "llama-3.1-8b-instant" }),
@@ -71,7 +71,7 @@ import time, requests
 t0 = time.perf_counter()
 first = None
 with requests.post(
-    "https://api.dualmindlab.tech/api/arena/chat/stream",
+    "{{apiBase}}/api/arena/chat/stream",
     headers={"Authorization": f"Bearer {token}"},
     json={"prompt": "Summarise the plot of Hamlet in three lines", "model": "llama-3.1-8b-instant"},
     stream=True,

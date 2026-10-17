@@ -6,7 +6,12 @@ keywords: ["tutorial", "battle", "vote", "dualchat", "blind"]
 icon: "swords"
 ---
 
+import TokenWarning from "/snippets/token-warning.mdx"
+import FallbackNote from "/snippets/fallback-note.mdx"
+
 This tutorial builds the core Arena loop against the API. You'll need an access token in `DUALMIND_TOKEN` ([how to get one](/api-reference/authentication)).
+
+<TokenWarning />
 
 ```mermaid
 sequenceDiagram
@@ -29,14 +34,14 @@ sequenceDiagram
 
     <CodeGroup>
     ```bash cURL
-    THREAD_ID=$(curl -s https://api.dualmindlab.tech/api/threads \
+    THREAD_ID=$(curl -s {{apiBase}}/api/threads \
       -H "Authorization: Bearer $DUALMIND_TOKEN" -H "Content-Type: application/json" \
       -d '{"title": "Haiku battles", "mode": "battle"}' | jq -r .threadId)
     ```
 
     ```javascript JavaScript
     const api = (path, body) =>
-      fetch(`https://api.dualmindlab.tech${path}`, {
+      fetch(`{{apiBase}}${path}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${process.env.DUALMIND_TOKEN}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -53,7 +58,7 @@ sequenceDiagram
 
     S = requests.Session()
     S.headers["Authorization"] = f"Bearer {os.environ['DUALMIND_TOKEN']}"
-    BASE = "https://api.dualmindlab.tech"
+    BASE = "{{apiBase}}"
 
     thread_id = S.post(f"{BASE}/api/threads", json={"title": "Haiku battles", "mode": "battle"}).json()["threadId"]
     ```
@@ -65,7 +70,7 @@ sequenceDiagram
 
     <CodeGroup>
     ```bash cURL
-    curl -s https://api.dualmindlab.tech/api/arena/dualchat --max-time 150 \
+    curl -s {{apiBase}}/api/arena/dualchat --max-time 150 \
       -H "Authorization: Bearer $DUALMIND_TOKEN" -H "Content-Type: application/json" \
       -d "{\"prompt\": \"Write a haiku about distributed systems\", \"threadId\": \"$THREAD_ID\"}" > battle.json
     jq -r '.comparisonId, .agent1.message, "---", .agent2.message' battle.json
@@ -100,9 +105,7 @@ sequenceDiagram
     const reveal = { a: battle.agent1.model.displayName, b: battle.agent2.model.displayName };
     ```
 
-    <Note>
-      If either message starts with `[System Note]`, that side was answered by a fallback model. You may want to skip the vote.
-    </Note>
+    <FallbackNote />
   </Step>
 
   <Step title="Vote">
@@ -110,7 +113,7 @@ sequenceDiagram
 
     <CodeGroup>
     ```bash cURL
-    curl -s https://api.dualmindlab.tech/api/arena/model-vote \
+    curl -s {{apiBase}}/api/arena/model-vote \
       -H "Authorization: Bearer $DUALMIND_TOKEN" -H "Content-Type: application/json" \
       -d "{\"comparisonId\": \"$(jq -r .comparisonId battle.json)\", \"voteChoice\": \"left\", \"voteDurationMs\": 9000}"
     ```

@@ -3,7 +3,10 @@ title: "Authentication"
 description: "Authenticate API requests with the access token from your DualMind Arena session."
 keywords: ["authentication", "token", "bearer", "jwt", "supabase"]
 icon: "key-round"
+tag: "New"
 ---
+
+import TokenWarning from "/snippets/token-warning.mdx"
 
 The API uses the same sign-in as the Arena. When you sign in, Supabase Auth issues a short-lived **access token** (a JWT). Send it as a Bearer token:
 
@@ -45,20 +48,18 @@ Authorization: Bearer <access token>
   </Step>
 </Steps>
 
-<Warning>
-  Your access token acts as **you**: anyone holding it can start battles, vote and read your private threads until it expires. Never paste it into shared code, issues or chats.
-</Warning>
+<TokenWarning />
 
 ## Check that it works
 
 <CodeGroup>
 ```bash cURL
-curl -i https://api.dualmindlab.tech/api/models \
+curl -i {{apiBase}}/api/models \
   -H "Authorization: Bearer $DUALMIND_TOKEN"
 ```
 
 ```javascript JavaScript
-const res = await fetch("https://api.dualmindlab.tech/api/models", {
+const res = await fetch("{{apiBase}}/api/models", {
   headers: { Authorization: `Bearer ${process.env.DUALMIND_TOKEN}` },
 });
 console.log(res.status, res.ok ? (await res.json()).items.length + " models" : res.headers.get("www-authenticate"));
@@ -68,7 +69,7 @@ console.log(res.status, res.ok ? (await res.json()).items.length + " models" : r
 import os, requests
 
 r = requests.get(
-    "https://api.dualmindlab.tech/api/models",
+    "{{apiBase}}/api/models",
     headers={"Authorization": f"Bearer {os.environ['DUALMIND_TOKEN']}"},
     timeout=30,
 )

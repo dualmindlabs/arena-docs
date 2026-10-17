@@ -61,7 +61,7 @@ icon: "life-buoy"
 
 <AccordionGroup>
   <Accordion title="Is there a public API?">
-    Yes, in beta. It's the same API the Arena uses, at `https://api.dualmindlab.tech`. Start with the [API overview](/api-reference/introduction).
+    Yes, in beta. It's the same API the Arena uses, at `{{apiBase}}`. Start with the [API overview](/api-reference/introduction).
   </Accordion>
   <Accordion title="How do I authenticate?">
     With the access token from your Arena session, sent as `Authorization: Bearer <token>`. The leaderboard, health check and shared threads need no token. See [Authentication](/api-reference/authentication).
@@ -77,10 +77,10 @@ icon: "life-buoy"
 ## Still stuck?
 
 <CardGroup cols={2}>
-  <Card title="Email support" icon="mail" href="mailto:support@dualmindlab.tech">
+  <Card title="Email support" icon="mail" href="mailto:{{supportEmail}}">
     support@dualmindlab.tech
   </Card>
-  <Card title="API status" icon="activity" href="https://api.dualmindlab.tech/health">
+  <Card title="API status" icon="activity" href="/status">
     Check that the API is up.
   </Card>
 </CardGroup>

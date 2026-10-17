@@ -6,6 +6,8 @@ keywords: ["modes", "battle", "side by side", "direct chat", "topper", "random"]
 icon: "swords"
 ---
 
+import FallbackNote from "/snippets/fallback-note.mdx"
+
 The mode menu at the top of the Arena switches between three modes. Battles and Side by Side comparisons can be voted on; Direct Chat is for trying one model on its own.
 
 <CardGroup cols={3}>
@@ -88,6 +90,4 @@ flowchart LR
   </Accordion>
 </AccordionGroup>
 
-<Info>
-  If a model is unreachable or times out, the Arena answers with a fallback model and starts the reply with a **[System Note]** saying so. Keep that in mind before voting on that battle.
-</Info>
+<FallbackNote />

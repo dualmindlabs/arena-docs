@@ -3,6 +3,7 @@ title: "Leaderboard"
 description: "How DualMind turns votes into an ELO ranking, and how to read every number on the board."
 keywords: ["leaderboard", "elo", "ranking", "win rate"]
 icon: "trophy"
+tag: "New"
 ---
 
 The [leaderboard](https://arena.dualmindlab.tech/leaderboard/) ranks every model by its **ELO score**, the rating system chess uses. It is built only from Arena votes.
@@ -57,11 +58,11 @@ The leaderboard is public. No account or token is needed:
 
 <CodeGroup>
 ```bash cURL
-curl -s https://api.dualmindlab.tech/api/arena/model-stats | jq '.items[:5][] | {eloRank, displayName, eloScore, winRate}'
+curl -s {{apiBase}}/api/arena/model-stats | jq '.items[:5][] | {eloRank, displayName, eloScore, winRate}'
 ```
 
 ```javascript JavaScript
-const { items } = await (await fetch("https://api.dualmindlab.tech/api/arena/model-stats")).json();
+const { items } = await (await fetch("{{apiBase}}/api/arena/model-stats")).json();
 const top = items.filter(m => m.totalResponses >= 50).slice(0, 10);
 console.table(top.map(({ eloRank, displayName, providerName, eloScore }) => ({ eloRank, displayName, providerName, eloScore })));
 ```
@@ -69,7 +70,7 @@ console.table(top.map(({ eloRank, displayName, providerName, eloScore }) => ({ e
 ```python Python
 import requests
 
-items = requests.get("https://api.dualmindlab.tech/api/arena/model-stats", timeout=30).json()["items"]
+items = requests.get("{{apiBase}}/api/arena/model-stats", timeout=30).json()["items"]
 for m in [m for m in items if m["totalResponses"] >= 50][:10]:
     print(f'{m["eloRank"]:>3}  {m["displayName"]:<40} {m["eloScore"]:.0f}')
 ```
