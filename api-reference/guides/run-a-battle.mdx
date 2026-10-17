@@ -13,6 +13,16 @@ This tutorial builds the core Arena loop against the API. You'll need an access 
 
 <TokenWarning />
 
+<Tree>
+  <Tree.Folder name="dualmind-battle" defaultOpen>
+    <Tree.File name=".env" />
+    <Tree.File name="battle.mjs" />
+    <Tree.File name="battle.py" />
+  </Tree.Folder>
+</Tree>
+
+Put `DUALMIND_TOKEN=...` in `.env` (and `.env` in `.gitignore`), then follow along in JavaScript (Node 18+) or Python 3.9+.
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -39,7 +49,7 @@ sequenceDiagram
       -d '{"title": "Haiku battles", "mode": "battle"}' | jq -r .threadId)
     ```
 
-    ```javascript JavaScript
+    ```javascript battle.mjs {1-9}
     const api = (path, body) =>
       fetch(`{{apiBase}}${path}`, {
         method: "POST",
@@ -53,7 +63,7 @@ sequenceDiagram
     const { threadId } = await api("/api/threads", { title: "Haiku battles", mode: "battle" });
     ```
 
-    ```python Python
+    ```python battle.py {3-5}
     import os, requests
 
     S = requests.Session()
@@ -76,7 +86,7 @@ sequenceDiagram
     jq -r '.comparisonId, .agent1.message, "---", .agent2.message' battle.json
     ```
 
-    ```javascript JavaScript
+    ```javascript battle.mjs
     const battle = await api("/api/arena/dualchat", {
       prompt: "Write a haiku about distributed systems",
       threadId,
@@ -85,7 +95,7 @@ sequenceDiagram
     console.log("B:", battle.agent2.message);
     ```
 
-    ```python Python
+    ```python battle.py
     battle = S.post(
         f"{BASE}/api/arena/dualchat",
         json={"prompt": "Write a haiku about distributed systems", "threadId": thread_id},
@@ -118,7 +128,7 @@ sequenceDiagram
       -d "{\"comparisonId\": \"$(jq -r .comparisonId battle.json)\", \"voteChoice\": \"left\", \"voteDurationMs\": 9000}"
     ```
 
-    ```javascript JavaScript
+    ```javascript battle.mjs {4-6}
     const started = Date.now();
     // ...user reads both answers and picks one...
     await api("/api/arena/model-vote", {
@@ -128,7 +138,7 @@ sequenceDiagram
     });
     ```
 
-    ```python Python
+    ```python battle.py {3}
     S.post(
         f"{BASE}/api/arena/model-vote",
         json={"comparisonId": battle["comparisonId"], "voteChoice": "left", "voteDurationMs": 9000},
@@ -145,17 +155,21 @@ sequenceDiagram
     jq -r '"A was \(.agent1.model.displayName) (\(.agent1.model.provider))", "B was \(.agent2.model.displayName) (\(.agent2.model.provider))"' battle.json
     ```
 
-    ```javascript JavaScript
+    ```javascript battle.mjs
     console.log(`A was ${reveal.a}, B was ${reveal.b}`);
     ```
 
-    ```python Python
+    ```python battle.py
     a, b = battle["agent1"]["model"], battle["agent2"]["model"]
     print(f"A was {a['displayName']} ({a['provider']}), B was {b['displayName']} ({b['provider']})")
     ```
     </CodeGroup>
   </Step>
 </Steps>
+
+<Check>
+  You've built the full Arena loop: battle, blind vote, reveal. Your vote counts on the [leaderboard](/concepts/leaderboard) like any other.
+</Check>
 
 ## Variations
 
