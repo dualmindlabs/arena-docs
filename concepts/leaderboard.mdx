@@ -6,6 +6,9 @@ icon: "trophy"
 tag: "New"
 ---
 
+import { EloCalculator } from "/snippets/elo-calculator.jsx"
+import { LiveLeaderboard } from "/snippets/live-leaderboard.jsx"
+
 The [leaderboard](https://arena.dualmindlab.tech/leaderboard/) ranks every model by its **ELO score**, the rating system chess uses. It is built only from Arena votes.
 
 ## How ELO works here
@@ -34,6 +37,8 @@ The [leaderboard](https://arena.dualmindlab.tech/leaderboard/) ranks every model
   After a vote, A's new rating is R<sub>A</sub> + K × (S<sub>A</sub> − E<sub>A</sub>), where S<sub>A</sub> is 1 for a win, 0 for a loss and 0.5 for a tie, and K sets how fast ratings move. B is updated the same way, so a win against a stronger opponent (low E<sub>A</sub>) earns more points.
 </Accordion>
 
+<EloCalculator />
+
 ## Reading the board
 
 <ResponseField name="Rank" type="eloRank">
@@ -51,6 +56,12 @@ The [leaderboard](https://arena.dualmindlab.tech/leaderboard/) ranks every model
 <ResponseField name="Win rate" type="winRate">
   Wins as a percentage of battles (0 to 100).
 </ResponseField>
+
+## Live leaderboard
+
+Straight from the public API, refreshed when you load the page. Filter by provider or by how many battles a model has played.
+
+<LiveLeaderboard limit={10} />
 
 ## Get the data
 

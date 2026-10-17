@@ -13,13 +13,13 @@ When you send your first prompt, the Arena creates a **thread** for the conversa
 
 <CardGroup cols={3}>
   <Card title="Private" icon="lock">
-    The default. Only you can open it.
+    <Badge color="gray">private</Badge> The default. Only you can open it.
   </Card>
   <Card title="Unlisted" icon="link">
-    Anyone with the link can view it. It isn't listed anywhere.
+    <Badge color="blue">unlisted</Badge> Anyone with the link can view it. It isn't listed anywhere.
   </Card>
   <Card title="Public" icon="globe">
-    Anyone can view it. Meant for threads you're happy to have reshared.
+    <Badge color="green">public</Badge> Anyone can view it. Meant for threads you're happy to have reshared.
   </Card>
 </CardGroup>
 
@@ -52,7 +52,7 @@ flowchart TD
     Auth -->|Yes| Own{Private thread<br/>owned by someone else?}
     Own -->|Yes| R403[No access]
     Own -->|No| Show
-    classDef dm fill:#00D9FF1F,stroke:#0B7FA0,stroke-width:1px
+    classDef dm fill:#00D9FF1F,stroke:#09738F,stroke-width:1px
     classDef dmv fill:#8B5CF61F,stroke:#7C3AED,stroke-width:1px
     classDef dmn fill:#8C919A14,stroke:#8C919A,stroke-width:1px
     class Req dmn
