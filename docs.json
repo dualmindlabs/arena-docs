@@ -2,51 +2,74 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "linden",
   "name": "DualMind Arena",
+  "description": "Docs for DualMind Arena: blind, side-by-side AI model evaluation, the live ELO leaderboard and the Arena API.",
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg",
-    "href": "https://dualmind.ai"
+    "href": "https://docs.dualmindlab.tech"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.png",
   "colors": {
-    "primary": "#0EA5E9",
-    "light": "#38BDF8",
-    "dark": "#0369A1"
+    "primary": "#0B7FA0",
+    "light": "#00D9FF",
+    "dark": "#0B7FA0"
+  },
+  "background": {
+    "color": {
+      "light": "#FFFFFF",
+      "dark": "#0F1115"
+    }
   },
   "fonts": {
     "heading": {
-      "family": "Inter",
-      "weight": 700
+      "family": "Bricolage Grotesque",
+      "weight": 600
     },
     "body": {
-      "family": "Inter",
+      "family": "Bricolage Grotesque",
       "weight": 400
+    }
+  },
+  "icons": {
+    "library": "lucide"
+  },
+  "appearance": {
+    "default": "system"
+  },
+  "styling": {
+    "eyebrows": "section",
+    "codeblocks": {
+      "theme": {
+        "light": "github-light",
+        "dark": "vesper"
+      }
     }
   },
   "navbar": {
     "links": [
       {
-        "label": "Arena",
-        "href": "https://arena.dualmind.ai"
+        "label": "Leaderboard",
+        "href": "https://arena.dualmindlab.tech/leaderboard/"
       },
       {
-        "label": "Blog",
-        "href": "https://dualmind.ai/blog"
+        "label": "dualmindlab.tech",
+        "href": "https://dualmindlab.tech"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Try Arena Free →",
-      "href": "https://arena.dualmind.ai"
+      "label": "Open the Arena",
+      "href": "https://arena.dualmindlab.tech"
     }
   },
   "navigation": {
     "tabs": [
       {
-        "tab": "Documentation",
+        "tab": "Guides",
+        "icon": "book-open",
         "groups": [
           {
-            "group": "Getting Started",
+            "group": "Get started",
             "pages": [
               "welcome",
               "quickstart",
@@ -54,19 +77,95 @@
             ]
           },
           {
-            "group": "Concepts",
+            "group": "Using the Arena",
             "pages": [
-              "concepts/how-dualmind-works",
               "concepts/model-comparison",
-              "concepts/latency-measurement",
-              "concepts/evaluation-philosophy"
+              "concepts/voting",
+              "concepts/leaderboard",
+              "concepts/threads",
+              "concepts/models-and-providers"
             ]
           },
           {
-            "group": "Platform",
+            "group": "How it works",
             "pages": [
-              "roadmap",
-              "changelog"
+              "concepts/how-dualmind-works",
+              "concepts/latency-measurement",
+              "concepts/evaluation-philosophy"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API reference",
+        "icon": "code",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/introduction",
+              "api-reference/authentication",
+              "api-reference/errors"
+            ]
+          },
+          {
+            "group": "Tutorials",
+            "pages": [
+              "api-reference/guides/run-a-battle",
+              "api-reference/guides/streaming"
+            ]
+          },
+          {
+            "group": "Arena",
+            "pages": [
+              "api-reference/chat/dual-chat",
+              "api-reference/chat/single-chat",
+              "api-reference/chat/streaming"
+            ]
+          },
+          {
+            "group": "Voting & leaderboard",
+            "pages": [
+              "api-reference/voting/submit-vote",
+              "api-reference/voting/get-stats"
+            ]
+          },
+          {
+            "group": "Models",
+            "pages": [
+              "api-reference/models/list-models"
+            ]
+          },
+          {
+            "group": "Threads",
+            "pages": [
+              "api-reference/threads/list-threads",
+              "api-reference/threads/create-thread",
+              "api-reference/threads/get-thread",
+              "api-reference/threads/get-messages",
+              "api-reference/threads/update-thread",
+              "api-reference/threads/share-thread",
+              "api-reference/threads/delete-thread"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "api-reference/utilities/health",
+              "api-reference/utilities/feature-flags"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Changelog",
+        "icon": "history",
+        "groups": [
+          {
+            "group": "Product",
+            "pages": [
+              "changelog",
+              "roadmap"
             ]
           }
         ]
@@ -75,20 +174,33 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Try the Arena",
-          "href": "https://arena.dualmind.ai",
-          "icon": "bolt"
+          "anchor": "Open the Arena",
+          "href": "https://arena.dualmindlab.tech",
+          "icon": "swords"
         },
         {
           "anchor": "Leaderboard",
-          "href": "https://arena.dualmind.ai/leaderboard",
-          "icon": "chart-bar"
+          "href": "https://arena.dualmindlab.tech/leaderboard/",
+          "icon": "trophy"
         },
         {
-          "anchor": "LinkedIn",
-          "href": "https://linkedin.com/company/dualmindlabs",
-          "icon": "linkedin"
+          "anchor": "API status",
+          "href": "https://api.dualmindlab.tech/health",
+          "icon": "activity"
         }
+      ]
+    }
+  },
+  "api": {
+    "openapi": "api-reference/openapi.json",
+    "playground": {
+      "display": "interactive"
+    },
+    "examples": {
+      "languages": [
+        "bash",
+        "javascript",
+        "python"
       ]
     }
   },
@@ -96,6 +208,7 @@
     "options": [
       "copy",
       "view",
+      "download-spec",
       "chatgpt",
       "claude",
       "perplexity"
@@ -103,12 +216,88 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/dualmindai",
-      "github": "https://github.com/dualmind-labs",
-      "linkedin": "https://linkedin.com/company/dualmindlabs"
-    }
+      "website": "https://dualmindlab.tech",
+      "github": "https://github.com/dualmindlabs"
+    },
+    "links": [
+      {
+        "header": "Product",
+        "items": [
+          {
+            "label": "Arena",
+            "href": "https://arena.dualmindlab.tech"
+          },
+          {
+            "label": "Leaderboard",
+            "href": "https://arena.dualmindlab.tech/leaderboard/"
+          },
+          {
+            "label": "Changelog",
+            "href": "/changelog"
+          }
+        ]
+      },
+      {
+        "header": "Developers",
+        "items": [
+          {
+            "label": "API reference",
+            "href": "/api-reference/introduction"
+          },
+          {
+            "label": "Run a battle",
+            "href": "/api-reference/guides/run-a-battle"
+          },
+          {
+            "label": "API health",
+            "href": "https://api.dualmindlab.tech/health"
+          }
+        ]
+      },
+      {
+        "header": "Company",
+        "items": [
+          {
+            "label": "DualMind Labs",
+            "href": "https://dualmindlab.tech"
+          },
+          {
+            "label": "Contact",
+            "href": "https://dualmindlab.tech/contact"
+          },
+          {
+            "label": "Privacy",
+            "href": "https://dualmindlab.tech/privacy"
+          }
+        ]
+      }
+    ]
   },
   "seo": {
-    "indexing": "navigable"
+    "indexing": "navigable",
+    "metatags": {
+      "og:site_name": "DualMind Arena Docs"
+    }
+  },
+  "redirects": [
+    {
+      "source": "/api-reference/users/sync-user",
+      "destination": "/api-reference/authentication"
+    },
+    {
+      "source": "/api-reference/utilities/speech",
+      "destination": "/api-reference/introduction"
+    },
+    {
+      "source": "/introduction",
+      "destination": "/welcome"
+    }
+  ],
+  "errors": {
+    "404": {
+      "redirect": false,
+      "title": "This page lost the vote",
+      "description": "We couldn't find that page. Head back to the [docs home](/welcome) or the [API reference](/api-reference/introduction)."
+    }
   }
 }
