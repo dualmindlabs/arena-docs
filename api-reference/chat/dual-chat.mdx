@@ -1,121 +1,19 @@
 ---
-title: "Arena Compare"
-api: "POST https://api.dualmind.ai/v1/arena/compare"
-description: "Submit a prompt to the arena and receive two anonymized AI responses for blind comparison."
+openapi: "POST /api/arena/dualchat"
+title: "Start a battle"
 ---
 
-## Authentication
+<Info>
+  **Keep it blind.** The response includes `agent1.model`, `agent2.model` and `arena.models` so you can reveal names after a vote. Keep them hidden from voters until they vote, as the Arena does. See [Run a battle](/api-reference/guides/run-a-battle).
+</Info>
 
-<ParamField header="Authorization" type="string" required>
-  Bearer token obtained from your DualMind account.
-  ```
-  Authorization: Bearer dm_test_xxxxxxxxxxxx
-  ```
-</ParamField>
+| You want | Send |
+| :-- | :-- |
+| A blind random battle | `prompt` only (or `selectionMode: "random"`) |
+| The leader vs a challenger | `selectionMode: "topper"` |
+| Two models you choose (Side by Side) | `model1` **and** `model2` |
+| To save it in a thread | `threadId` of a thread you own |
 
-## Request
-
-<ParamField body="prompt" type="string" required>
-  The prompt to send to both models.
-</ParamField>
-
-<ParamField body="mode" type="string">
-  Model selection mode. One of `random` (default), `topper`, or `manual`.
-</ParamField>
-
-<ParamField body="models" type="array">
-  Required only for `manual` mode. An array of exactly two model IDs to compare.
-</ParamField>
-
-<RequestExample>
-```bash cURL
-curl -X POST https://api.dualmind.ai/v1/arena/compare \
-  -H 'Authorization: Bearer dm_test_xxxxxxxxxxxx' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "prompt": "Write a haiku about programming",
-    "mode": "random"
-  }'
-```
-
-```javascript JavaScript
-const response = await fetch('https://api.dualmind.ai/v1/arena/compare', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer dm_test_xxxxxxxxxxxx',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    prompt: 'Write a haiku about programming',
-    mode: 'random'
-  })
-});
-const data = await response.json();
-```
-
-```python Python
-import requests
-
-response = requests.post(
-    'https://api.dualmind.ai/v1/arena/compare',
-    headers={
-        'Authorization': 'Bearer dm_test_xxxxxxxxxxxx',
-        'Content-Type': 'application/json'
-    },
-    json={
-        'prompt': 'Write a haiku about programming',
-        'mode': 'random'
-    }
-)
-```
-</RequestExample>
-
-## Response
-
-<ResponseField name="comparisonId" type="string">
-  Unique identifier for this comparison, required to submit a vote.
-</ResponseField>
-
-<ResponseField name="responses" type="array">
-  Two anonymized model responses. Model identities are hidden until a vote is submitted.
-
-  <Expandable title="Response object">
-    <ResponseField name="slot" type="string">`left` or `right`</ResponseField>
-    <ResponseField name="content" type="string">The model's response text.</ResponseField>
-    <ResponseField name="latencyMs" type="integer">Time taken to generate the response in milliseconds.</ResponseField>
-  </Expandable>
-</ResponseField>
-
-<ResponseExample>
-```json 200 OK
-{
-  "comparisonId": "cmp_c7d3a4b2-9e1f-4c5d",
-  "responses": [
-    {
-      "slot": "left",
-      "content": "Code flows like water\nThrough circuits of logic pure\nBugs hide in shadows",
-      "latencyMs": 820
-    },
-    {
-      "slot": "right",
-      "content": "Silent keystrokes fall\nAlgorithms come alive\nCreation awaits",
-      "latencyMs": 1100
-    }
-  ]
-}
-```
-
-```json 400 Bad Request
-{
-  "error": "INVALID_REQUEST",
-  "message": "Prompt is required."
-}
-```
-
-```json 401 Unauthorized
-{
-  "error": "UNAUTHORIZED",
-  "message": "Invalid or missing token."
-}
-```
-</ResponseExample>
+<Note>
+  Both models run in parallel with a 60 second limit each. A model that fails or times out is replaced by a fallback model, and its `message` starts with `[System Note]`. Use a client timeout of at least 120 seconds.
+</Note>

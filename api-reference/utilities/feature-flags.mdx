@@ -1,71 +1,10 @@
 ---
-title: "Feature Flags"
-api: "GET https://api.dualmind.ai/v1/settings/feature-flag/{key}"
-description: "Check whether a named platform feature is currently enabled."
+openapi: "GET /api/settings/feature-flag/{key}"
+title: "Get a feature flag"
 ---
 
-## Authentication
+| Key | Controls |
+| :-- | :-- |
+| `public_sharing` | Whether `public` and `unlisted` threads can be read without signing in |
 
-No authentication required.
-
-## Path Parameters
-
-<ParamField path="key" type="string" required>
-  The feature flag key to check.
-
-  **Known keys**:
-  - `public_sharing` — Controls whether threads can be shared publicly or via link
-</ParamField>
-
-## Response
-
-<ResponseField name="key" type="string">
-  Echo of the requested feature flag key.
-</ResponseField>
-
-<ResponseField name="enabled" type="boolean">
-  `true` if the feature is enabled, `false` otherwise (including for unknown keys).
-</ResponseField>
-
-<RequestExample>
-```bash cURL
-curl https://api.dualmind.ai/v1/settings/feature-flag/public_sharing
-```
-
-```javascript JavaScript
-const response = await fetch(
-  'https://api.dualmind.ai/v1/settings/feature-flag/public_sharing'
-);
-const flag = await response.json();
-```
-
-```python Python
-import requests
-flag = requests.get(
-    'https://api.dualmind.ai/v1/settings/feature-flag/public_sharing'
-).json()
-```
-</RequestExample>
-
-<ResponseExample>
-```json 200 OK (Enabled)
-{
-  "key": "public_sharing",
-  "enabled": true
-}
-```
-
-```json 200 OK (Disabled or Unknown)
-{
-  "key": "public_sharing",
-  "enabled": false
-}
-```
-
-```json 400 Bad Request
-{
-  "error": "INVALID_REQUEST",
-  "message": "Feature flag key is required."
-}
-```
-</ResponseExample>
+Unknown keys return `enabled: false`.

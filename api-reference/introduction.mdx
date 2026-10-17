@@ -1,121 +1,99 @@
 ---
-title: "API Reference"
-sidebarTitle: "Introduction"
-description: "Programmatic access to DualMind Arena — integrate blind model comparisons into your own tools."
-keywords: ["API", "REST", "integration", "developers"]
+title: "API overview"
+sidebarTitle: "Overview"
+description: "The REST API behind DualMind Arena: battles, votes, the leaderboard, models and threads."
+keywords: ["API", "REST", "integration", "developers", "base url"]
+icon: "code"
 ---
 
-# DualMind Arena API
+The Arena app is a client of a public REST API. Everything you can do in the Arena (start a battle, vote, browse the leaderboard, manage threads) you can do over HTTPS.
 
-The DualMind Arena API allows you to programmatically:
-- Submit prompts to the arena
-- Retrieve anonymized model responses
-- Vote on comparisons
-- Access the public leaderboard data
+<CardGroup cols={2}>
+  <Card title="Base URL" icon="globe">
+    `https://api.dualmindlab.tech`
+  </Card>
+  <Card title="Format" icon="braces">
+    JSON in, JSON out (camelCase). Streaming uses Server-Sent Events.
+  </Card>
+  <Card title="Auth" icon="key-round">
+    `Authorization: Bearer <access token>` from your Arena session. [Details](/api-reference/authentication).
+  </Card>
+  <Card title="Status" icon="activity">
+    [`GET /health`](/api-reference/utilities/health) is public and always cheap to call.
+  </Card>
+</CardGroup>
 
-## Authentication
+<Warning>
+  The API is in **beta**. It's the same API the Arena uses, so it's stable in practice, but fields can be added and behaviour can change. Watch the [changelog](/changelog).
+</Warning>
 
-All API requests require an authentication token. You can obtain a personal access token from your account settings.
+## Endpoints at a glance
 
-```bash
-Authorization: Bearer <your_api_token>
+| Area | Method and path | Auth |
+| :-- | :-- | :-- |
+| **Arena** | [`POST /api/arena/dualchat`](/api-reference/chat/dual-chat) Start a battle | Bearer |
+| | [`POST /api/arena/chat`](/api-reference/chat/single-chat) Chat with one model | Bearer |
+| | [`POST /api/arena/chat/stream`](/api-reference/chat/streaming) Stream a chat reply | Bearer |
+| **Voting** | [`POST /api/arena/model-vote`](/api-reference/voting/submit-vote) Submit a vote | Bearer |
+| | [`GET /api/arena/model-stats`](/api-reference/voting/get-stats) Get the leaderboard | None |
+| **Models** | [`GET /api/models`](/api-reference/models/list-models) List models | Bearer |
+| **Threads** | [`GET`](/api-reference/threads/list-threads) · [`POST /api/threads`](/api-reference/threads/create-thread) | Bearer |
+| | [`GET /api/threads/{threadId}`](/api-reference/threads/get-thread) · [`/messages`](/api-reference/threads/get-messages) | Bearer, or none for shared threads |
+| | [`PATCH`](/api-reference/threads/update-thread) · [`PATCH …/visibility`](/api-reference/threads/share-thread) · [`DELETE`](/api-reference/threads/delete-thread) | Bearer (owner) |
+| **Utilities** | [`GET /health`](/api-reference/utilities/health) · [`GET /api/settings/feature-flag/{key}`](/api-reference/utilities/feature-flags) | None |
+
+## Your first request
+
+No token needed for the leaderboard:
+
+<CodeGroup>
+```bash cURL
+curl https://api.dualmindlab.tech/api/arena/model-stats
 ```
 
-## Base URL
-
-All requests should be made to:
-
-```
-https://api.dualmind.ai/v1
+```javascript JavaScript
+const res = await fetch("https://api.dualmindlab.tech/api/arena/model-stats");
+console.log((await res.json()).items[0]);
 ```
 
-## Comparisons
-
-### Submit a Prompt
-
-Run a blind comparison between two models.
-
-```bash
-POST /arena/compare
+```python Python
+import requests
+print(requests.get("https://api.dualmindlab.tech/api/arena/model-stats", timeout=30).json()["items"][0])
 ```
+</CodeGroup>
 
-**Parameters:**
+## Conventions
 
-| Name | Type | Description |
-| :--- | :--- | :--- |
-| `prompt` | string | The input prompt for the models |
-| `mode` | string | `random`, `topper`, or `manual` |
-| `models` | array | (Optional) Specific model IDs if using manual mode |
+<AccordionGroup>
+  <Accordion title="IDs" icon="fingerprint">
+    Threads, messages, comparisons and models use UUIDs. Model fields (`model`, `model1`, `model2`) accept either a model's `modelName` or its `modelId`.
+  </Accordion>
+  <Accordion title="Timestamps" icon="clock">
+    ISO 8601 in UTC, e.g. `2026-10-17T12:00:00Z`.
+  </Accordion>
+  <Accordion title="Null fields" icon="circle-off">
+    Fields with no value are left out of responses rather than sent as `null`.
+  </Accordion>
+  <Accordion title="Timeouts" icon="hourglass">
+    Each model call is capped at 60 seconds, after which a fallback model answers. Give battle requests a client timeout of at least 120 seconds.
+  </Accordion>
+  <Accordion title="Correlation IDs" icon="tag">
+    Every response carries an `X-Correlation-Id` header. Include it when you report a problem.
+  </Accordion>
+  <Accordion title="CORS" icon="globe-lock">
+    Browser requests from any origin are allowed.
+  </Accordion>
+</AccordionGroup>
 
-**Response:**
+## OpenAPI
 
-```json
-{
-  "comparisonId": "cmp_12345",
-  "responses": [
-    {
-      "modelId": "hidden",
-      "content": "Response from Model A..."
-    },
-    {
-      "modelId": "hidden",
-      "content": "Response from Model B..."
-    }
-  ]
-}
-```
+The full OpenAPI 3.1 spec lives in the docs repo at [`api-reference/openapi.json`](https://github.com/dualmindlabs/arena-docs/blob/main/api-reference/openapi.json), and every endpoint page can download it from the page menu. Import it into Postman, Insomnia or a code generator. Each endpoint page also has a **Try it** playground.
 
-## Voting
-
-### Submit a Vote
-
-Cast your vote for the better response. This reveals the model identities.
-
-```bash
-POST /arena/vote
-```
-
-**Body:**
-
-```json
-{
-  "comparisonId": "cmp_12345",
-  "winner": "left" // "left", "right", "tie", or "both_bad"
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "revealedModels": {
-    "left": {
-      "id": "gpt-4o",
-      "name": "GPT-4o"
-    },
-    "right": {
-      "id": "claude-3-5-sonnet",
-      "name": "Claude 3.5 Sonnet"
-    }
-  }
-}
-```
-
-## Models & Stats
-
-### List Models
-
-Get the current list of available models and their ELO ratings.
-
-```bash
-GET /models
-```
-
-### Get Leaderboard
-
-Retrieve the current global leaderboard.
-
-```bash
-GET /leaderboard
-```
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key-round" href="/api-reference/authentication">
+    Get an access token and keep it fresh.
+  </Card>
+  <Card title="Run a battle end to end" icon="swords" href="/api-reference/guides/run-a-battle">
+    Battle, hide names, vote, reveal.
+  </Card>
+</CardGroup>

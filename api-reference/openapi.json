@@ -1,77 +1,1828 @@
 {
-  "openapi": "3.0.0",
+  "openapi": "3.1.0",
   "info": {
     "title": "DualMind Arena API",
     "version": "1.0.0",
-    "description": "Public API for DualMind Arena model comparisons."
+    "description": "The REST API behind DualMind Arena: blind battles, votes, the leaderboard, models and threads.",
+    "contact": {
+      "name": "DualMind Labs",
+      "email": "support@dualmindlab.tech",
+      "url": "https://dualmindlab.tech"
+    }
   },
   "servers": [
     {
-      "url": "https://api.dualmind.ai/v1"
+      "url": "https://api.dualmindlab.tech",
+      "description": "Production"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Arena",
+      "description": "Battles and chat."
+    },
+    {
+      "name": "Voting",
+      "description": "Votes and the leaderboard."
+    },
+    {
+      "name": "Models",
+      "description": "Available models."
+    },
+    {
+      "name": "Threads",
+      "description": "Saved conversations and sharing."
+    },
+    {
+      "name": "Utilities",
+      "description": "Health and feature flags."
     }
   ],
   "paths": {
-    "/arena/compare": {
+    "/api/arena/dualchat": {
       "post": {
-        "summary": "Start a comparison",
-        "tags": ["Arena"],
+        "tags": [
+          "Arena"
+        ],
+        "operationId": "startBattle",
+        "summary": "Start a battle",
+        "description": "Send one prompt to two models in parallel and get both answers plus a `comparisonId` to vote with. Leave `model1`/`model2` empty for a blind Battle (`random` or `topper`), or set both for Side by Side.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "prompt": { "type": "string" },
-                  "mode": { "type": "string", "enum": ["random", "topper", "manual"] }
-                }
+                "$ref": "#/components/schemas/BattleRequest"
+              },
+              "example": {
+                "prompt": "Write a haiku about distributed systems",
+                "selectionMode": "random"
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "Comparison started" }
+          "200": {
+            "description": "Both responses and the comparison ID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BattleResponse"
+                },
+                "example": {
+                  "success": true,
+                  "agent1": {
+                    "object": "ai.response",
+                    "output": {
+                      "type": "message",
+                      "content": [
+                        {
+                          "type": "output_text",
+                          "text": "Packets cross the sea / two clocks disagree on now / quorum settles it"
+                        }
+                      ]
+                    },
+                    "success": true,
+                    "message": "Packets cross the sea / two clocks disagree on now / quorum settles it",
+                    "model": {
+                      "name": "llama-3.3-70b-versatile",
+                      "displayName": "Llama 3.3 70B Versatile",
+                      "provider": "groq"
+                    },
+                    "prompt": "Write a haiku about distributed systems",
+                    "selectionMode": "random",
+                    "responseTimeMs": 1880,
+                    "usage": {
+                      "promptTokens": 9,
+                      "completionTokens": 19,
+                      "totalTokens": 28
+                    },
+                    "timestamp": "2026-10-17T12:00:00Z"
+                  },
+                  "agent2": {
+                    "object": "ai.response",
+                    "output": {
+                      "type": "message",
+                      "content": [
+                        {
+                          "type": "output_text",
+                          "text": "Nodes drift apart / consensus is a rumour / the log remembers"
+                        }
+                      ]
+                    },
+                    "success": true,
+                    "message": "Nodes drift apart / consensus is a rumour / the log remembers",
+                    "model": {
+                      "name": "gemini-2.5-flash",
+                      "displayName": "Gemini 2.5 Flash",
+                      "provider": "google"
+                    },
+                    "prompt": "Write a haiku about distributed systems",
+                    "selectionMode": "random",
+                    "responseTimeMs": 1880,
+                    "usage": {
+                      "promptTokens": 9,
+                      "completionTokens": 17,
+                      "totalTokens": 26
+                    },
+                    "timestamp": "2026-10-17T12:00:00Z"
+                  },
+                  "comparisonId": "3f6c1a2b-9d4e-4f7a-8b1c-0e2d3f4a5b6c",
+                  "arena": {
+                    "comparison": {
+                      "winnerByLength": "agent1",
+                      "winnerByTokens": "agent1",
+                      "verdict": "Agent 1 produced the longer, more token-heavy answer.",
+                      "agent1MessageLength": 70,
+                      "agent2MessageLength": 61,
+                      "agent1Tokens": 28,
+                      "agent2Tokens": 26
+                    },
+                    "models": {
+                      "agent1": "llama-3.3-70b-versatile",
+                      "agent2": "gemini-2.5-flash"
+                    }
+                  },
+                  "timestamp": "2026-10-17T12:00:02Z",
+                  "totalResponseTimeMs": 1880
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing prompt, or only one of `model1`/`model2` set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiError"
+                },
+                "example": {
+                  "object": "ai.error",
+                  "code": "INVALID_REQUEST",
+                  "message": "Prompt is required and cannot be empty",
+                  "timestamp": "2026-10-17T12:00:00Z"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiError"
+                }
+              }
+            }
+          }
         }
       }
     },
-    "/arena/vote": {
+    "/api/arena/chat": {
       "post": {
+        "tags": [
+          "Arena"
+        ],
+        "operationId": "chat",
+        "summary": "Chat with one model",
+        "description": "Direct Chat: send a prompt to one model (or `auto` for a random one) and get the full reply.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              },
+              "example": {
+                "prompt": "Explain TCP vs UDP with a pizza analogy",
+                "model": "auto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The model's reply.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                },
+                "example": {
+                  "object": "ai.response",
+                  "output": {
+                    "type": "message",
+                    "content": [
+                      {
+                        "type": "output_text",
+                        "text": "Packets are pizzas..."
+                      }
+                    ]
+                  },
+                  "success": true,
+                  "message": "Packets are pizzas...",
+                  "model": {
+                    "name": "llama-3.3-70b-versatile",
+                    "displayName": "Llama 3.3 70B Versatile",
+                    "provider": "groq"
+                  },
+                  "prompt": "Explain TCP vs UDP with a pizza analogy",
+                  "selectionMode": "random",
+                  "responseTimeMs": 2140,
+                  "usage": {
+                    "promptTokens": 18,
+                    "completionTokens": 212,
+                    "totalTokens": 230
+                  },
+                  "timestamp": "2026-10-17T12:00:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing prompt.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/arena/chat/stream": {
+      "post": {
+        "tags": [
+          "Arena"
+        ],
+        "operationId": "chatStream",
+        "summary": "Stream a chat reply",
+        "description": "Same request as `POST /api/arena/chat`, but the reply streams back as Server-Sent Events. Each event is a `data:` line with a JSON object: `ai.stream.delta` chunks, then one `ai.stream.done`. Errors arrive as an `ai.error` event.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              },
+              "example": {
+                "prompt": "Write a limerick about latency",
+                "model": "auto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "An event stream.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/StreamDelta"
+                    },
+                    {
+                      "$ref": "#/components/schemas/StreamDone"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AiError"
+                    }
+                  ]
+                },
+                "example": "data: {\"object\":\"ai.stream.delta\",\"delta\":{\"type\":\"output_text\",\"text\":\"There once\"}}\n\ndata: {\"object\":\"ai.stream.delta\",\"delta\":{\"type\":\"output_text\",\"text\":\" was a packet\"}}\n\ndata: {\"object\":\"ai.stream.done\",\"finishReason\":\"stop\"}\n\n"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/arena/model-vote": {
+      "post": {
+        "tags": [
+          "Voting"
+        ],
+        "operationId": "submitVote",
         "summary": "Submit a vote",
-        "tags": ["Arena"],
+        "description": "Vote on a battle. Each signed-in user can vote once per comparison. Voting marks the comparison as revealed.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoteRequest"
+              },
+              "example": {
+                "comparisonId": "3f6c1a2b-9d4e-4f7a-8b1c-0e2d3f4a5b6c",
+                "voteChoice": "left",
+                "voteDurationMs": 8200
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Vote recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Vote recorded successfully"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing `comparisonId` or `voteChoice`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "error": "ComparisonId is required",
+                  "code": "INVALID_REQUEST"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "description": "The vote could not be recorded, e.g. unknown comparison or you already voted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Comparison not found",
+                  "code": "VOTE_ERROR"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/arena/model-stats": {
+      "get": {
+        "tags": [
+          "Voting"
+        ],
+        "operationId": "getLeaderboard",
+        "summary": "Get the leaderboard",
+        "description": "Public. Returns every ranked model with its ELO score, rank and win/loss/tie counts, ordered by rank.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Leaderboard entries.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LeaderboardEntry"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "items": [
+                    {
+                      "modelId": "c6e0cc03-3b12-41bf-b119-d0d02bec039b",
+                      "modelName": "llama-3.3-70b-versatile",
+                      "displayName": "Llama 3.3 70B Versatile",
+                      "providerName": "groq",
+                      "eloScore": 1043.0,
+                      "eloRank": 13,
+                      "totalWins": 50,
+                      "totalLosses": 49,
+                      "totalTies": 14,
+                      "totalResponses": 113,
+                      "winRate": 44.25
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/models": {
+      "get": {
+        "tags": [
+          "Models"
+        ],
+        "operationId": "listModels",
+        "summary": "List models",
+        "description": "Every active model you can use, newest first.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active models.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Model"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "items": [
+                    {
+                      "modelId": "c6e0cc03-3b12-41bf-b119-d0d02bec039b",
+                      "modelName": "llama-3.3-70b-versatile",
+                      "displayName": "Llama 3.3 70B Versatile",
+                      "providerName": "groq",
+                      "isFree": true,
+                      "status": "active"
+                    },
+                    {
+                      "modelId": "fdbfca6d-a3d2-4a70-b0ab-426024eb5cd5",
+                      "modelName": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+                      "displayName": "llama-3.3-70b-instruct-fp8-fast",
+                      "providerName": "cloudflare",
+                      "isFree": true,
+                      "status": "active"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/threads": {
+      "get": {
+        "tags": [
+          "Threads"
+        ],
+        "operationId": "listThreads",
+        "summary": "List your threads",
+        "description": "Your threads, newest first.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            },
+            "description": "Maximum number of threads to return."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Threads.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Thread"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Threads"
+        ],
+        "operationId": "createThread",
+        "summary": "Create a thread",
+        "description": "Create an empty thread. New threads are `private`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "default": "New Chat",
+                    "description": "Thread title."
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "battle",
+                      "arena",
+                      "direct"
+                    ],
+                    "default": "battle",
+                    "description": "The Arena mode this thread is for."
+                  }
+                }
+              },
+              "example": {
+                "title": "TCP vs UDP",
+                "mode": "battle"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The new thread.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Thread"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/threads/{threadId}": {
+      "get": {
+        "tags": [
+          "Threads"
+        ],
+        "operationId": "getThread",
+        "summary": "Get a thread",
+        "description": "Owners can always read their threads. `public` and `unlisted` threads can be read by anyone, without a token, while public sharing is enabled.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "parameters": [
+          {
+            "name": "threadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Thread ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The thread.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Thread"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The thread is private and no valid token was sent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The thread is private and belongs to someone else.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thread.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Thread not found",
+                  "code": "NOT_FOUND"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Threads"
+        ],
+        "operationId": "renameThread",
+        "summary": "Rename a thread",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "threadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Thread ID."
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": [
+                  "title"
+                ],
                 "properties": {
-                  "comparisonId": { "type": "string" },
-                  "winner": { "type": "string", "enum": ["left", "right", "tie", "both_bad"] }
+                  "title": {
+                    "type": "string"
+                  }
                 }
+              },
+              "example": {
+                "title": "Pizza networking"
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "Vote recorded" }
+          "200": {
+            "description": "Updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Thread updated successfully"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing title.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "You don't own this thread.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thread.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Threads"
+        ],
+        "operationId": "deleteThread",
+        "summary": "Delete a thread",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "threadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Thread ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Thread deleted successfully"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "You don't own this thread.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thread.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
         }
       }
     },
-    "/models": {
+    "/api/threads/{threadId}/messages": {
       "get": {
-        "summary": "List available models",
-        "tags": ["Models"],
+        "tags": [
+          "Threads"
+        ],
+        "operationId": "getThreadMessages",
+        "summary": "Get thread messages",
+        "description": "All turns in a thread, oldest first. Same access rules as `GET /api/threads/{threadId}`. With a token, `voteChoice` and `hasVoted` reflect your own votes.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "parameters": [
+          {
+            "name": "threadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Thread ID."
+          }
+        ],
         "responses": {
-          "200": { "description": "List of active models" }
+          "200": {
+            "description": "Messages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ThreadMessage"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The thread is private and no valid token was sent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The thread is private and belongs to someone else.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thread.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
         }
       }
     },
-    "/leaderboard": {
-      "get": {
-        "summary": "Get current leaderboard",
-        "tags": ["Start"],
+    "/api/threads/{threadId}/visibility": {
+      "patch": {
+        "tags": [
+          "Threads"
+        ],
+        "operationId": "setThreadVisibility",
+        "summary": "Share a thread",
+        "description": "Change who can see a thread. Share links use `https://arena.dualmindlab.tech/share/{threadId}`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "threadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Thread ID."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "visibility"
+                ],
+                "properties": {
+                  "visibility": {
+                    "type": "string",
+                    "enum": [
+                      "private",
+                      "unlisted",
+                      "public"
+                    ]
+                  }
+                }
+              },
+              "example": {
+                "visibility": "unlisted"
+              }
+            }
+          }
+        },
         "responses": {
-          "200": { "description": "Current ELO rankings" }
+          "200": {
+            "description": "Updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "visibility": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Thread visibility updated successfully",
+                  "visibility": "unlisted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid visibility.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Only the owner can change visibility.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thread.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/feature-flag/{key}": {
+      "get": {
+        "tags": [
+          "Utilities"
+        ],
+        "operationId": "getFeatureFlag",
+        "summary": "Get a feature flag",
+        "description": "Public. Check whether a feature is switched on, e.g. `public_sharing`.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "public_sharing"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Flag state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "example": {
+                  "key": "public_sharing",
+                  "enabled": true
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Utilities"
+        ],
+        "operationId": "health",
+        "summary": "Health check",
+        "description": "Public liveness check. `/api/health` returns the same response.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "The API is up.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                },
+                "example": {
+                  "status": "healthy",
+                  "message": "DualMind API is running",
+                  "timestamp": "2026-10-17T12:00:00Z",
+                  "version": "1.0.0",
+                  "instanceId": "67c5fc5b5352c545..."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "The access token from your DualMind Arena session (a Supabase JWT). See Authentication."
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Missing, invalid or expired token. The body is empty; the `WWW-Authenticate` header explains why."
+      }
+    },
+    "schemas": {
+      "ChatRequest": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "The user prompt. Must not be empty.",
+            "example": "Explain TCP vs UDP with a pizza analogy"
+          },
+          "model": {
+            "type": "string",
+            "default": "auto",
+            "description": "Model to use: a `modelName` (or `modelId`) from `GET /api/models`, or `auto` to let the Arena pick a random model.",
+            "example": "auto"
+          },
+          "system": {
+            "type": "string",
+            "description": "Optional system prompt."
+          },
+          "maxTokens": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 4096,
+            "description": "Maximum tokens to generate."
+          },
+          "temperature": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2,
+            "default": 0.7,
+            "description": "Sampling temperature."
+          },
+          "threadId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Save the prompt and reply to this thread. You must own the thread."
+          }
+        }
+      },
+      "BattleRequest": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "The prompt both models answer. Must not be empty.",
+            "example": "Write a haiku about distributed systems"
+          },
+          "selectionMode": {
+            "type": "string",
+            "enum": [
+              "random",
+              "topper"
+            ],
+            "default": "random",
+            "description": "How the two models are picked when `model1` and `model2` are not set. `random`: two different random models. `topper`: the model with the best win rate against a random challenger."
+          },
+          "model1": {
+            "type": "string",
+            "description": "Left model (`modelName` or `modelId`). Set both `model1` and `model2` for a Side by Side comparison; setting only one is an error."
+          },
+          "model2": {
+            "type": "string",
+            "description": "Right model (`modelName` or `modelId`)."
+          },
+          "system": {
+            "type": "string",
+            "description": "Optional system prompt sent to both models."
+          },
+          "maxTokens": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 4096,
+            "description": "Maximum tokens per response."
+          },
+          "temperature": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2,
+            "default": 0.7,
+            "description": "Sampling temperature for both models."
+          },
+          "threadId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Save this battle to a thread you own."
+          }
+        }
+      },
+      "ModelInfo": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Provider model name, e.g. `llama-3.3-70b-versatile` or `@cf/meta/llama-3.1-8b-instruct`."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-friendly name."
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "groq",
+              "google",
+              "cloudflare"
+            ],
+            "description": "Inference provider."
+          }
+        }
+      },
+      "Usage": {
+        "type": "object",
+        "properties": {
+          "promptTokens": {
+            "type": "integer"
+          },
+          "completionTokens": {
+            "type": "integer"
+          },
+          "totalTokens": {
+            "type": "integer"
+          }
+        }
+      },
+      "ChatResponse": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "ai.response"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "description": "The model's reply as plain text (Markdown)."
+          },
+          "output": {
+            "type": "object",
+            "description": "The same reply in a structured content envelope.",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "message"
+              },
+              "content": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "output_text"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "model": {
+            "$ref": "#/components/schemas/ModelInfo"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "selectionMode": {
+            "type": "string",
+            "enum": [
+              "automatic",
+              "manual",
+              "random",
+              "topper"
+            ],
+            "description": "`automatic`/`manual` for single chat; `random`/`topper`/`manual` for battles."
+          },
+          "responseTimeMs": {
+            "type": "integer",
+            "description": "Wall-clock time of the request in milliseconds. In a battle both models run in parallel, so this is the time until both finished."
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BattleResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "comparisonId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Pass this to `POST /api/arena/model-vote`."
+          },
+          "agent1": {
+            "$ref": "#/components/schemas/ChatResponse",
+            "description": "Left response (vote `left`)."
+          },
+          "agent2": {
+            "$ref": "#/components/schemas/ChatResponse",
+            "description": "Right response (vote `right`)."
+          },
+          "arena": {
+            "type": "object",
+            "description": "Simple length and token heuristics plus the model names. Clients that want a blind experience should keep model names hidden until the user votes, as the Arena does.",
+            "properties": {
+              "comparison": {
+                "type": "object",
+                "properties": {
+                  "winnerByLength": {
+                    "type": "string",
+                    "enum": [
+                      "agent1",
+                      "agent2",
+                      "tie"
+                    ]
+                  },
+                  "winnerByTokens": {
+                    "type": "string",
+                    "enum": [
+                      "agent1",
+                      "agent2",
+                      "tie"
+                    ]
+                  },
+                  "verdict": {
+                    "type": "string"
+                  },
+                  "userWinner": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Always `null` here; votes are submitted separately."
+                  },
+                  "agent1MessageLength": {
+                    "type": "integer"
+                  },
+                  "agent2MessageLength": {
+                    "type": "integer"
+                  },
+                  "agent1Tokens": {
+                    "type": "integer"
+                  },
+                  "agent2Tokens": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "models": {
+                "type": "object",
+                "properties": {
+                  "agent1": {
+                    "type": "string"
+                  },
+                  "agent2": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "totalResponseTimeMs": {
+            "type": "integer"
+          }
+        }
+      },
+      "StreamDelta": {
+        "type": "object",
+        "description": "One chunk of generated text.",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "ai.stream.delta"
+          },
+          "delta": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "output_text"
+              },
+              "text": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "StreamDone": {
+        "type": "object",
+        "description": "Sent once when generation finishes.",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "ai.stream.done"
+          },
+          "finishReason": {
+            "type": "string",
+            "example": "stop"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage"
+          }
+        }
+      },
+      "AiError": {
+        "type": "object",
+        "description": "Error envelope used by the chat endpoints (and as an SSE event on the stream).",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "ai.error"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "INVALID_REQUEST",
+              "API_ERROR",
+              "STREAM_ERROR"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "description": "Error envelope used by the threads, voting, models and settings endpoints.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": false
+          },
+          "error": {
+            "type": "string",
+            "description": "Human-readable message."
+          },
+          "code": {
+            "type": "string",
+            "description": "Machine-readable code, e.g. `INVALID_REQUEST`, `NOT_FOUND`, `FORBIDDEN`, `UNAUTHORIZED`, `VOTE_ERROR`."
+          }
+        }
+      },
+      "VoteRequest": {
+        "type": "object",
+        "required": [
+          "comparisonId",
+          "voteChoice"
+        ],
+        "properties": {
+          "comparisonId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The `comparisonId` returned by `POST /api/arena/dualchat`."
+          },
+          "voteChoice": {
+            "type": "string",
+            "enum": [
+              "left",
+              "right",
+              "tie",
+              "both-bad"
+            ],
+            "description": "`left` = `agent1` wins, `right` = `agent2` wins, `tie` = both good, `both-bad` = neither was helpful."
+          },
+          "voteDurationMs": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optional: how long the user took to decide, in milliseconds."
+          }
+        }
+      },
+      "LeaderboardEntry": {
+        "type": "object",
+        "description": "One model on the leaderboard. snake_case aliases (`model_id`, `model_name`, `display_name`, `provider_name`, `elo`, `elo_rating`, `wins`, `matches`, `total_matches`, `win_rate`) are also returned for older clients.",
+        "properties": {
+          "modelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "modelName": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "providerName": {
+            "type": "string",
+            "enum": [
+              "groq",
+              "google",
+              "cloudflare"
+            ]
+          },
+          "eloScore": {
+            "type": "number",
+            "description": "Current ELO rating. New models start at 1000."
+          },
+          "eloRank": {
+            "type": "integer",
+            "description": "Rank by ELO (1 = best). Equal scores share a rank."
+          },
+          "totalWins": {
+            "type": "integer"
+          },
+          "totalLosses": {
+            "type": "integer"
+          },
+          "totalTies": {
+            "type": "integer"
+          },
+          "totalResponses": {
+            "type": "integer",
+            "description": "Number of comparisons the model has appeared in."
+          },
+          "winRate": {
+            "type": "number",
+            "description": "Win percentage (0 to 100)."
+          }
+        }
+      },
+      "Model": {
+        "type": "object",
+        "properties": {
+          "modelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "modelName": {
+            "type": "string",
+            "description": "Use this as `model`, `model1` or `model2`."
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "providerName": {
+            "type": "string",
+            "enum": [
+              "groq",
+              "google",
+              "cloudflare"
+            ]
+          },
+          "isFree": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "const": "active"
+          }
+        }
+      },
+      "Thread": {
+        "type": "object",
+        "properties": {
+          "threadId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "battle",
+              "arena",
+              "direct"
+            ],
+            "description": "`battle` = blind Battle, `arena` = Side by Side, `direct` = Direct Chat."
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "private",
+              "unlisted",
+              "public"
+            ],
+            "default": "private"
+          },
+          "messageCount": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ThreadMessage": {
+        "type": "object",
+        "description": "One turn in a thread. Single-model turns only fill the `model1*` fields.",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "threadId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "type": "integer",
+            "description": "Order within the thread (ascending)."
+          },
+          "promptText": {
+            "type": "string"
+          },
+          "model1Name": {
+            "type": "string"
+          },
+          "model2Name": {
+            "type": "string"
+          },
+          "model1Response": {
+            "type": "string"
+          },
+          "model2Response": {
+            "type": "string"
+          },
+          "model1TimeMs": {
+            "type": "integer"
+          },
+          "model2TimeMs": {
+            "type": "integer"
+          },
+          "comparisonId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Set for battle turns; use it to vote."
+          },
+          "voteChoice": {
+            "type": "string",
+            "enum": [
+              "left",
+              "right",
+              "tie",
+              "both-bad"
+            ],
+            "description": "Your vote on this turn, if any."
+          },
+          "hasVoted": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Success": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "healthy"
+          },
+          "message": {
+            "type": "string",
+            "example": "DualMind API is running"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "string",
+            "example": "1.0.0"
+          },
+          "instanceId": {
+            "type": "string",
+            "description": "Identifier of the API instance that served the request."
+          }
         }
       }
     }

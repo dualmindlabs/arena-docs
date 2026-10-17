@@ -1,0 +1,119 @@
+---
+title: "Errors"
+description: "Status codes, error envelopes and how to handle them."
+keywords: ["errors", "status codes", "troubleshooting", "401", "500"]
+icon: "circle-alert"
+---
+
+The API uses standard HTTP status codes. Error bodies come in a few shapes depending on the endpoint family.
+
+## Status codes
+
+| Code | Meaning | Typical cause |
+| :-- | :-- | :-- |
+| `200` | OK | |
+| `400` | Bad request | Missing `prompt`, only one of `model1`/`model2`, missing `voteChoice`, bad visibility value |
+| `401` | Unauthorized | No token, or an invalid or expired token; or a private thread read without a token |
+| `403` | Forbidden | Changing or reading someone else's private thread |
+| `404` | Not found | Unknown thread ID |
+| `500` | Server error | Provider failure, duplicate vote, unknown comparison, or an unexpected error |
+
+## Error shapes
+
+<Tabs>
+  <Tab title="Arena (chat & battles)">
+    Battles and chat use an `ai.error` envelope:
+
+    ```json
+    {
+      "object": "ai.error",
+      "code": "INVALID_REQUEST",
+      "message": "Prompt is required and cannot be empty",
+      "timestamp": "2026-10-17T12:00:00Z"
+    }
+    ```
+
+    | `code` | When |
+    | :-- | :-- |
+    | `INVALID_REQUEST` | The request body is incomplete |
+    | `API_ERROR` | Something failed while generating |
+    | `STREAM_ERROR` | The stream failed after it started (sent as an SSE event) |
+  </Tab>
+  <Tab title="Threads, votes, models">
+    Other endpoints use a `success: false` envelope:
+
+    ```json
+    {
+      "success": false,
+      "error": "Thread not found",
+      "code": "NOT_FOUND"
+    }
+    ```
+
+    Common codes: `INVALID_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `VOTE_ERROR`, `THREADS_ERROR`, `MODELS_ERROR`.
+  </Tab>
+  <Tab title="Authentication">
+    Token problems return `401` with an **empty body**. Read the `WWW-Authenticate` header:
+
+    ```http
+    HTTP/2 401
+    www-authenticate: Bearer error="invalid_token", error_description="The token expired"
+    ```
+  </Tab>
+  <Tab title="Unexpected">
+    Unhandled errors return `500` as `application/problem+json`:
+
+    ```json
+    { "status": 500, "title": "An unexpected error occurred" }
+    ```
+  </Tab>
+</Tabs>
+
+## Model failures aren't errors
+
+If a model fails or takes longer than 60 seconds, the battle still succeeds with `200`. That side's answer comes from a fallback model and starts with a note:
+
+```text
+[System Note]: The original model '<model>' was unreachable. Showing response from basic fallback model '<fallback>'.
+```
+
+If the fallback also fails, the answer text says the model is temporarily unavailable. Check `message` for these prefixes if you aggregate results.
+
+## Handling errors
+
+<CodeGroup>
+```javascript JavaScript
+async function dualmind(path, { token, ...init } = {}) {
+  const res = await fetch(`https://api.dualmindlab.tech${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...(token && { Authorization: `Bearer ${token}` }), ...init.headers },
+  });
+  if (res.status === 401) throw new Error(`Unauthorized: ${res.headers.get("www-authenticate") ?? "sign in again"}`);
+  const body = res.headers.get("content-type")?.includes("json") ? await res.json() : null;
+  if (!res.ok) {
+    const msg = body?.message ?? body?.error ?? body?.title ?? res.statusText;
+    throw new Error(`${res.status} ${body?.code ?? ""} ${msg} (correlation ${res.headers.get("x-correlation-id")})`);
+  }
+  return body;
+}
+```
+
+```python Python
+import requests
+
+def dualmind(method, path, token=None, **kw):
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    r = requests.request(method, f"https://api.dualmindlab.tech{path}", headers=headers, timeout=120, **kw)
+    if r.status_code == 401:
+        raise RuntimeError(f"Unauthorized: {r.headers.get('WWW-Authenticate', 'sign in again')}")
+    body = r.json() if "json" in r.headers.get("Content-Type", "") else None
+    if not r.ok:
+        msg = (body or {}).get("message") or (body or {}).get("error") or (body or {}).get("title") or r.reason
+        raise RuntimeError(f"{r.status_code} {(body or {}).get('code', '')} {msg} (correlation {r.headers.get('X-Correlation-Id')})")
+    return body
+```
+</CodeGroup>
+
+<Tip>
+  Include the `X-Correlation-Id` response header when you contact [support@dualmindlab.tech](mailto:support@dualmindlab.tech). It lets us find your request in the logs.
+</Tip>
