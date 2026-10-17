@@ -1,0 +1,4 @@
+# Every pull request asks for a review from the docs owner.
+# Later rules win, so keep the catch-all first.
+
+*       @harshbhx

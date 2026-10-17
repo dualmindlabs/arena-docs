@@ -1,0 +1,38 @@
+name: Docs request
+description: Suggest a new page or guide, or an improvement to an existing one.
+title: "[Request]: "
+labels: ["documentation", "enhancement"]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What are you trying to do?
+      description: Describe the task or question the docs do not answer today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What should the docs cover?
+      description: A new page, a section on an existing page, an example, a diagram or something else.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Getting started
+        - Concepts (comparisons, voting, leaderboard, latency)
+        - API reference
+        - Changelog or roadmap
+        - Site navigation or search
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: related
+    attributes:
+      label: Related page
+      description: Optional. A page this would extend or link from.
+      placeholder: https://docs.dualmindlab.tech/welcome
