@@ -42,7 +42,7 @@ curl -N {{apiBase}}/api/arena/chat/stream \
   -d '{"prompt": "Write a limerick about latency", "model": "auto"}'
 ```
 
-```javascript stream.mjs {13-19}
+```javascript stream.mjs {14-20}
 const res = await fetch("{{apiBase}}/api/arena/chat/stream", {
   method: "POST",
   headers: { Authorization: `Bearer ${process.env.DUALMIND_TOKEN}`, "Content-Type": "application/json" },

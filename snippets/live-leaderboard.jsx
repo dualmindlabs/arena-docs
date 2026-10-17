@@ -8,18 +8,28 @@ export const LiveLeaderboard = ({ limit = 10, endpoint = "https://api.dualmindla
   const [provider, setProvider] = useState("all");
   const [minBattles, setMinBattles] = useState(50);
 
+  const current = useRef(null);
+
   const load = useCallback(async () => {
+    if (current.current) current.current.abort();
+    const ctrl = new AbortController();
+    current.current = ctrl;
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      ctrl.abort();
+    }, 15000);
     setError(null);
     setItems(null);
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 15000);
     try {
       const res = await fetch(endpoint, { signal: ctrl.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = await res.json();
+      if (current.current !== ctrl) return;
       setItems(Array.isArray(body.items) ? body.items : []);
     } catch (err) {
-      setError(err && err.name === "AbortError" ? "The request timed out." : "Couldn't reach the API.");
+      if (current.current !== ctrl) return;
+      setError(timedOut ? "The request timed out." : "Couldn't reach the API.");
     } finally {
       clearTimeout(timer);
     }
@@ -27,6 +37,9 @@ export const LiveLeaderboard = ({ limit = 10, endpoint = "https://api.dualmindla
 
   useEffect(() => {
     load();
+    return () => {
+      if (current.current) current.current.abort();
+    };
   }, [load]);
 
   const providers = { groq: "Groq", google: "Google", cloudflare: "Cloudflare" };

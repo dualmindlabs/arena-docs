@@ -92,7 +92,7 @@ export const BattleDemo = () => {
               ? `Your vote moves ${Math.abs(dA)} ELO points: ${battle.a.name} ${fmt(dA)}, ${battle.b.name} ${fmt(dB)}.`
               : vote === "tie"
               ? `In ELO a tie counts as half a win each, nudging the ratings together: ${battle.a.name} ${fmt(dA)}, ${battle.b.name} ${fmt(dB)}.`
-              : "Both are bad records the battle with no winner."}
+              : 'A "Both are bad" vote records the battle with no winner.'}
             <div className="dm-muted" style={{ fontSize: "0.8rem", marginTop: "0.4rem" }}>
               Demo answers and model names are made up. In the Arena the answers are live and the names are real.
             </div>

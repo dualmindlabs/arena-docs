@@ -54,7 +54,7 @@ A fast answer feels fluent before you've read a word, and a slow one gives you m
 ## Measure it yourself
 
 <CodeGroup>
-```javascript measure.mjs {8-13}
+```javascript measure.mjs {9-14}
 const t0 = performance.now();
 const res = await fetch("{{apiBase}}/api/arena/chat/stream", {
   method: "POST",
@@ -72,7 +72,7 @@ for (;;) {
 console.log({ timeToFirstChunkMs: Math.round(first), totalMs: Math.round(performance.now() - t0) });
 ```
 
-```python measure.py {12-14}
+```python measure.py {13-15}
 import time, requests
 
 t0 = time.perf_counter()
