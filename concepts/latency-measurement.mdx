@@ -55,6 +55,7 @@ const res = await fetch("{{apiBase}}/api/arena/chat/stream", {
   headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
   body: JSON.stringify({ prompt: "Summarise the plot of Hamlet in three lines", model: "llama-3.1-8b-instant" }),
 });
+if (!res.ok) throw new Error(`HTTP ${res.status}`);
 const reader = res.body.getReader();
 let first = null;
 for (;;) {
@@ -77,6 +78,7 @@ with requests.post(
     stream=True,
     timeout=120,
 ) as r:
+    r.raise_for_status()
     for chunk in r.iter_content(chunk_size=None):
         if first is None:
             first = time.perf_counter() - t0
