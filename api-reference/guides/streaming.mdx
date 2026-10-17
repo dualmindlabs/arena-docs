@@ -48,6 +48,7 @@ const res = await fetch("{{apiBase}}/api/arena/chat/stream", {
   headers: { Authorization: `Bearer ${process.env.DUALMIND_TOKEN}`, "Content-Type": "application/json" },
   body: JSON.stringify({ prompt: "Write a limerick about latency", model: "auto" }),
 });
+if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
 const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
 let buffer = "";

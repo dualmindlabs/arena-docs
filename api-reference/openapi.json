@@ -245,7 +245,7 @@
                     "provider": "groq"
                   },
                   "prompt": "Explain TCP vs UDP with a pizza analogy",
-                  "selectionMode": "random",
+                  "selectionMode": "automatic",
                   "responseTimeMs": 2140,
                   "usage": {
                     "promptTokens": 18,
@@ -748,6 +748,21 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Unexpected error. `error` carries the message.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Unexpected error while loading the thread.",
+                  "code": "THREAD_ERROR"
+                }
+              }
+            }
           }
         }
       },
@@ -980,6 +995,21 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error. `error` carries the message.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Unexpected error while loading the messages.",
+                  "code": "MESSAGES_ERROR"
                 }
               }
             }
