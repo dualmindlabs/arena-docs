@@ -32,32 +32,11 @@ jobs:
       - name: OpenAPI spec is valid JSON
         if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: python3 -m json.tool api-reference/openapi.json > /dev/null
-      - name: mint validate
+      # Also validates every OpenAPI spec listed in docs.json (the separate
+      # `mint openapi-check` command is deprecated in favour of this).
+      - name: mint validate (pages, docs.json and OpenAPI specs)
         if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: npx --yes "mint@${MINT_VERSION}" validate
-      - name: mint openapi-check (every spec in docs.json)
-        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
-        run: |
-          specs=$(jq -r '
-            [.. | objects | select(has("openapi")) | .openapi
-              | if type == "string" then .
-                elif type == "array" then .[] | (if type == "string" then . else .source end)
-                else .source end]
-            | map(select(type == "string") | ltrimstr("/")) | unique | .[]' docs.json)
-          if [ -z "$specs" ]; then
-            echo "::notice::docs.json references no OpenAPI specs"
-            exit 0
-          fi
-          failed=0
-          for spec in $specs; do
-            echo "::group::openapi-check $spec"
-            if ! npx --yes "mint@${MINT_VERSION}" openapi-check "$spec"; then
-              echo "::error file=$spec::mint openapi-check failed for $spec"
-              failed=1
-            fi
-            echo "::endgroup::"
-          done
-          exit "$failed"
       - name: mint broken-links (pages, anchors, snippets, redirects)
         if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: npx --yes "mint@${MINT_VERSION}" broken-links --check-anchors --check-snippets --check-redirects
