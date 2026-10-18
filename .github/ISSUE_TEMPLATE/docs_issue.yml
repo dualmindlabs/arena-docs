@@ -1,0 +1,50 @@
+name: Docs issue
+description: Something in the docs is wrong, unclear, outdated or broken.
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping keep [docs.dualmindlab.tech](https://docs.dualmindlab.tech) accurate.
+        Problems with your Arena account go to support@dualmindlab.tech, and security problems follow the [security policy](https://github.com/dualmindlabs/arena-docs/security/policy), not this form.
+  - type: input
+    id: page
+    attributes:
+      label: Page URL
+      description: The page with the problem.
+      placeholder: https://docs.dualmindlab.tech/quickstart
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of problem is it?
+      options:
+        - Incorrect or outdated information
+        - Broken link or image
+        - Unclear or confusing explanation
+        - Missing information
+        - API reference does not match the API
+        - Typo, grammar or formatting
+        - Page does not load or render
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong?
+      description: Quote the text if you can, and say what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: Suggested fix
+      description: Optional. The wording or change you would suggest, with a source if it corrects a fact.
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots
+      description: Optional. Drag images here. Never include tokens or other secrets.

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Help with your Arena account
+    url: https://dualmindlab.tech/contact
+    about: This repository holds the docs only. For account, sign-in or Arena problems, email support@dualmindlab.tech.
+  - name: Report a security vulnerability
+    url: https://github.com/dualmindlabs/arena-docs/security/advisories/new
+    about: Please report security problems privately, never in a public issue.
+  - name: Try the Arena
+    url: https://arena.dualmindlab.tech
+    about: Compare two anonymous AI models side by side and vote on the better answer.
