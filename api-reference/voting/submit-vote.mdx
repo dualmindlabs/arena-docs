@@ -1,98 +1,15 @@
 ---
-title: "Submit Vote"
-api: "POST https://api.dualmind.ai/v1/arena/vote"
-description: "Cast your vote on a completed comparison. Model identities are revealed in the response."
+openapi: "POST /api/arena/model-vote"
+title: "Submit a vote"
 ---
 
-## Authentication
+| `voteChoice` | Meaning |
+| :-- | :-- |
+| `left` | `agent1` gave the better answer |
+| `right` | `agent2` gave the better answer |
+| `tie` | Both were good |
+| `both-bad` | Neither was helpful |
 
-<ParamField header="Authorization" type="string" required>
-  Bearer token.
-  ```
-  Authorization: Bearer dm_test_xxxxxxxxxxxx
-  ```
-</ParamField>
-
-## Request
-
-<ParamField body="comparisonId" type="string" required>
-  The comparison ID returned from `/arena/compare`.
-</ParamField>
-
-<ParamField body="winner" type="string" required>
-  Your vote. One of:
-  - `left` — the left model gave a better response
-  - `right` — the right model gave a better response
-  - `tie` — both responses were equally good
-  - `both_bad` — neither response was satisfactory
-</ParamField>
-
-<RequestExample>
-```bash cURL
-curl -X POST https://api.dualmind.ai/v1/arena/vote \
-  -H 'Authorization: Bearer dm_test_xxxxxxxxxxxx' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "comparisonId": "cmp_c7d3a4b2-9e1f-4c5d",
-    "winner": "left"
-  }'
-```
-
-```javascript JavaScript
-const response = await fetch('https://api.dualmind.ai/v1/arena/vote', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer dm_test_xxxxxxxxxxxx',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    comparisonId: 'cmp_c7d3a4b2-9e1f-4c5d',
-    winner: 'left'
-  })
-});
-```
-
-```python Python
-import requests
-
-requests.post(
-    'https://api.dualmind.ai/v1/arena/vote',
-    headers={'Authorization': 'Bearer dm_test_xxxxxxxxxxxx'},
-    json={'comparisonId': 'cmp_c7d3a4b2-9e1f-4c5d', 'winner': 'left'}
-)
-```
-</RequestExample>
-
-## Response
-
-<ResponseField name="success" type="boolean">
-  `true` if the vote was recorded.
-</ResponseField>
-
-<ResponseField name="revealedModels" type="object">
-  The model identities now revealed after voting.
-
-  <Expandable title="properties">
-    <ResponseField name="left" type="object">Name and ID of the left model.</ResponseField>
-    <ResponseField name="right" type="object">Name and ID of the right model.</ResponseField>
-  </Expandable>
-</ResponseField>
-
-<ResponseExample>
-```json 200 OK
-{
-  "success": true,
-  "revealedModels": {
-    "left": { "id": "llama-3.3-70b", "name": "Llama 3.3 70B" },
-    "right": { "id": "mixtral-8x7b", "name": "Mixtral 8x7B" }
-  }
-}
-```
-
-```json 400 Bad Request
-{
-  "error": "INVALID_REQUEST",
-  "message": "comparisonId is required."
-}
-```
-</ResponseExample>
+<Warning>
+  Votes are final: each user can vote once per `comparisonId`. A second vote is rejected with `VOTE_ERROR`.
+</Warning>

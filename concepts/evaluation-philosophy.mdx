@@ -1,115 +1,86 @@
 ---
-title: "Evaluation Philosophy"
+title: "Evaluation philosophy"
 description: "The principles behind how DualMind Arena designs fair, meaningful AI comparisons."
+keywords: ["evaluation", "methodology", "bias", "blind testing", "fairness"]
+icon: "scale"
 ---
 
-# Evaluation Philosophy
+Sending the same prompt to two models and collecting a vote sounds simple. Underneath are design problems that, left unsolved, make every result meaningless. This page explains the reasoning behind each choice.
 
-Building a system that compares AI models sounds straightforward — send the same prompt to two models, collect a vote. But beneath that simplicity are a set of design problems that, if left unsolved, make every result meaningless.
+<CardGroup cols={2}>
+  <Card title="Same input" icon="equal">
+    Both models get the exact same prompt, system prompt, token limit and temperature.
+  </Card>
+  <Card title="Hidden identities" icon="eye-off">
+    You judge answers labelled A and B. Names appear only after you vote.
+  </Card>
+  <Card title="Many votes, not one" icon="users">
+    Rankings come from many comparisons, weighted by opponent strength with ELO.
+  </Card>
+  <Card title="Speed kept separate" icon="timer">
+    Latency is recorded, never scored.
+  </Card>
+</CardGroup>
 
-This page explains the reasoning behind how the Arena evaluates models, and why each decision was made deliberately.
-
----
-
-## Fair Comparison Is a Design Problem
-
-When two models answer the same prompt, the natural instinct is to assume the comparison is fair. It isn't — not without careful design.
+## Fair comparison is a design problem
 
 A comparison is only valid when:
 
-- Both models receive **the exact same input**, constructed identically
-- Both models operate under **equivalent constraints** (token limits, temperature, context window)
-- The user **does not know which model produced which output** at the time of voting
-- Results are **aggregated across many comparisons**, not judged on a single exchange
+- both models receive **the exact same input**, built the same way,
+- both run under **the same constraints** (token limit, temperature, timeout),
+- the person voting **doesn't know which model wrote which answer**, and
+- results are **aggregated across many comparisons**, not read from one exchange.
 
-Any deviation from these conditions introduces systemic bias that compounds over time. The Arena was designed around these constraints, not added to them as an afterthought.
+Any deviation adds a bias that compounds over time, which is why the Arena was built around these constraints rather than adding them later.
 
----
+## Why blind comparison comes first
 
-## The Blind Comparison Requirement
+When you know which model you're reading, familiar biases switch on:
 
-The most important structural decision in the Arena is full anonymity — model identities are hidden until after a vote is cast.
+- **Brand familiarity**: a well-known model feels more authoritative, whatever it wrote.
+- **Expectation**: a model known for code gets extra credit on everything else.
+- <Tooltip headline="Anchoring" tip="A cognitive bias where the first piece of information you see sets the reference point for everything after it.">**Anchoring**</Tooltip>: the first answer you read becomes the yardstick for the second.
 
-This is not optional. It is the foundation.
+In Battle mode the Arena labels answers **Model A** and **Model B** and reveals the names only after your vote. With identities hidden, crowd votes become a useful signal: published arena research found crowd votes agreed with expert raters roughly 72 to 83 percent of the time ([Chiang et al., 2024](https://arxiv.org/abs/2403.04132)).
 
-When users know which model they are evaluating, every cognitive bias in existence activates:
+<Tip>
+  Building your own tooling on the API? Keep the `model` fields of a battle hidden from voters until they vote, as the Arena does. See [Run a battle](/api-reference/guides/run-a-battle).
+</Tip>
 
-- **Brand familiarity bias** — a well-known model feels more authoritative, regardless of output quality
-- **Expectation bias** — a model known for coding is scored higher even on creative writing
-- **Anchoring** — the first model seen is used as a baseline, advantaging it regardless of quality
+## Prompt bias is real
 
-The blind comparison design eliminates these biases at the architecture level. The model names are never transmitted to the client until a vote is submitted. This is not a UI concern — it is a data contract enforced at the API boundary.
+Not every prompt is an equally good test:
 
----
+- long, multi-part reasoning favours models with larger context windows,
+- chatty prompts favour chat-tuned models,
+- code prompts favour models trained heavily on code, and
+- one-word completions barely separate models at all.
 
-## Prompt Bias Is Real and Systematic
+Random pairing selects models without knowing the prompt, but users choose their own prompts, so a developer-heavy crowd skews toward code. No system removes prompt bias entirely; the goal is to keep it **proportional and visible** rather than hidden. Category leaderboards on the [roadmap](/roadmap) are the next step.
 
-Not all prompts are equal testing environments.
+## Latency is not intelligence
 
-Some prompts structurally favor certain model architectures:
+A 200 ms answer and a 4 s answer aren't comparable on quality without isolating speed:
 
-- Long, multi-part reasoning tasks favor models with larger context windows
-- Conversational prompts favor models optimized for chat fine-tuning
-- Code generation tasks favor models trained heavily on programming corpora
-- Single-word completion tasks are unreliable differentiators at any scale
+1. **Speed shapes perception.** A fast answer feels fluent before you've read it; a slow one gives you longer to find fault.
+2. **Speed is partly hosting.** The same model can be fast or slow depending on where and how it's served.
 
-The Arena's **Random mode** partially addresses this by selecting models without knowing the prompt — but the harder problem is that users self-select prompts based on their own use cases. A developer audience will skew toward code prompts. A creative writing community will skew toward narrative tasks.
+So the Arena generates both answers in parallel, shows them together, and records response time separately. Details: [Latency and speed](/concepts/latency-measurement).
 
-This is why the ELO rating system matters more than simple win rate. Win rate is a static snapshot. ELO is a dynamic, context-adjusted measure of relative performance that accounts for the strength of opponents over time. A model that beats weak competitors frequently can score lower than a model that occasionally beats strong competitors.
+## Rankings need volume
 
-No evaluation system fully eliminates prompt bias. The goal is to make it **proportional and transparent** rather than hidden and compounding.
+A model with 12 wins from 20 battles means something different from one with 1,200 wins from 2,000, even at the same win rate. That's why the leaderboard leads with ELO rather than raw win counts, and why every entry shows its battle count. Votes are timestamped and tied to a comparison, so rating changes can be traced over time.
 
----
+## What skipping each principle costs
 
-## Latency ≠ Intelligence
-
-A model that responds in 200ms and one that responds in 4 seconds are not directly comparable on quality — at least not without isolating the latency variable.
-
-This matters for two reasons:
-
-**First, latency shapes perception of quality.** Users exposed to a faster response form an immediate impression of fluency and confidence, even before reading the content. This is well-documented in UX research. A slower response that is objectively better may lose the vote simply because the user had more time to find fault with it.
-
-**Second, latency is infrastructure, not model intelligence.** A model's raw capability does not change based on whether it is served on overloaded shared infrastructure or a dedicated accelerator. Conflating speed with intelligence produces a leaderboard that reflects hosting decisions more than model quality.
-
-The Arena addresses this by:
-
-1. Measuring and surfacing **Time to First Token (TTFT)** and **Tokens per Second (TPS)** as distinct, visible metrics — never hidden inside a quality score
-2. Presenting both model responses in parallel rather than sequentially, so neither has a temporal advantage over the other
-
-The explicit goal is that a user can evaluate output quality independently of delivery speed, even if the human brain makes this genuinely difficult in practice.
-
----
-
-## Reproducibility as a Signal of System Integrity
-
-A comparison system that cannot reproduce results consistently is not a measurement system — it is a noise generator.
-
-Reproducibility in the Arena means:
-
-- The same prompt, sent to the same model, with the same parameters, should produce outputs within a predictable range of variation
-- The ELO rating of a model should reflect a stable long-run average, not oscillate wildly due to small sample effects
-- Vote data should be attributable and timestamped, enabling audits of rating drift over time
-
-This is why the Arena does not expose raw win counts as the primary metric. A model with 12 wins from 20 votes carries a different meaning than a model with 1,200 wins from 2,000 votes — even if the win rate is identical. The ELO system naturally weights confidence by volume and opponent strength.
-
-Reproducibility also means the system should behave the same regardless of time of day, request volume, or which user is asking. Infrastructure variance is invisible to the user. Evaluation integrity cannot be.
-
----
-
-## Why This Matters
-
-These are not abstract principles. Each one represents a category of failure that produces a broken leaderboard:
-
-| If you skip... | The failure is... |
-|---|---|
-| Blind comparison | Users vote on brand, not output |
-| Consistent inputs | Apples-to-oranges model prompting |
-| Latency separation | Hosting quality masquerades as model intelligence |
-| ELO over win rate | Small sample fluctuations look like stable rankings |
-| Reproducibility constraints | The leaderboard drifts without explanation |
-
-The Arena is built on the view that a fair comparison is worth the engineering cost to design correctly — and that a comparison system which cuts these corners produces results that are not just imprecise, but actively misleading.
+| If you skip... | You get... |
+| :-- | :-- |
+| Blind comparison | Votes on brand, not output |
+| Identical inputs | Apples-to-oranges prompting |
+| Separating latency | Hosting quality posing as intelligence |
+| ELO over win rate | Small-sample flukes that look like rankings |
+| Traceable votes | A leaderboard that drifts without explanation |
 
 <Info>
-These principles inform how the Arena is designed, not just how it is documented. If you are building evaluation tooling on top of the API, the same reasoning applies to how you interpret and aggregate the data you receive.
+  These principles shape how the Arena is built, not only how it's described. If you aggregate Arena data yourself, the same reasoning applies.
 </Info>

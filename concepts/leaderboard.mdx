@@ -1,0 +1,104 @@
+---
+title: "Leaderboard"
+description: "How DualMind turns votes into an ELO ranking, and how to read every number on the board."
+keywords: ["leaderboard", "elo", "ranking", "win rate"]
+icon: "trophy"
+tag: "New"
+---
+
+import { EloCalculator } from "/snippets/elo-calculator.jsx"
+import { LiveLeaderboard } from "/snippets/live-leaderboard.jsx"
+
+The [leaderboard](https://arena.dualmindlab.tech/leaderboard/) ranks every model by its **ELO score**, the rating system chess uses. It is built only from Arena votes.
+
+## How ELO works here
+
+<Steps>
+  <Step title="Everyone starts level">
+    A new model starts at **1000**.
+  </Step>
+  <Step title="Wins move points">
+    When a model wins a vote it gains points and its opponent loses points. Beating a higher-rated model is worth more than beating a lower-rated one.
+  </Step>
+  <Step title="Upsets matter most">
+    Losing to a much lower-rated model costs more than losing to a strong one. Over many battles, scores settle where the community's preferences put them.
+  </Step>
+</Steps>
+
+<Info>
+  ELO adjusts for **who** a model beat, which a raw win rate can't. A model that only ever met weak opponents can have a high win rate and a modest ELO.
+</Info>
+
+<Accordion title="The math" icon="sigma">
+  For models with ratings R<sub>A</sub> and R<sub>B</sub>, the expected score of A is
+
+  E<sub>A</sub> = 1 / (1 + 10<sup>(R<sub>B</sub> − R<sub>A</sub>) / 400</sup>)
+
+  After a vote, A's new rating is R<sub>A</sub> + K × (S<sub>A</sub> − E<sub>A</sub>), where S<sub>A</sub> is 1 for a win, 0 for a loss and 0.5 for a tie, and K sets how fast ratings move. B is updated the same way, so a win against a stronger opponent (low E<sub>A</sub>) earns more points.
+</Accordion>
+
+<EloCalculator />
+
+## Reading the board
+
+<ResponseField name="Rank" type="eloRank">
+  Position by ELO, 1 is best. Models with exactly the same score share a rank.
+</ResponseField>
+<ResponseField name="ELO" type="eloScore">
+  The current rating. Differences matter more than absolute values.
+</ResponseField>
+<ResponseField name="Wins / Losses / Ties" type="totalWins · totalLosses · totalTies">
+  Vote outcomes involving the model.
+</ResponseField>
+<ResponseField name="Battles" type="totalResponses">
+  How many comparisons the model has appeared in. More battles means a more settled score.
+</ResponseField>
+<ResponseField name="Win rate" type="winRate">
+  Wins as a percentage of battles (0 to 100).
+</ResponseField>
+
+## Live leaderboard
+
+Straight from the public API, refreshed when you load the page. Filter by provider or by how many battles a model has played.
+
+<LiveLeaderboard limit={10} />
+
+## Get the data
+
+The leaderboard is public. No account or token is needed:
+
+<CodeGroup>
+```bash cURL
+curl -s {{apiBase}}/api/arena/model-stats | jq '.items[:5][] | {eloRank, displayName, eloScore, winRate}'
+```
+
+```javascript JavaScript
+const { items } = await (await fetch("{{apiBase}}/api/arena/model-stats")).json();
+const top = items.filter(m => m.totalResponses >= 50).slice(0, 10);
+console.table(top.map(({ eloRank, displayName, providerName, eloScore }) => ({ eloRank, displayName, providerName, eloScore })));
+```
+
+```python Python
+import requests
+
+items = requests.get("{{apiBase}}/api/arena/model-stats", timeout=30).json()["items"]
+for m in [m for m in items if m["totalResponses"] >= 50][:10]:
+    print(f'{m["eloRank"]:>3}  {m["displayName"]:<40} {m["eloScore"]:.0f}')
+```
+</CodeGroup>
+
+See [Get the leaderboard](/api-reference/voting/get-stats) for every field.
+
+## Caveats
+
+<AccordionGroup>
+  <Accordion title="Small samples are noisy" icon="chart-scatter">
+    A model with a handful of battles can sit high or low by chance. Look at the battle count before drawing conclusions.
+  </Accordion>
+  <Accordion title="The prompts come from the community" icon="users">
+    Rankings reflect what Arena users ask. If most prompts are about code, the board leans toward coding ability.
+  </Accordion>
+  <Accordion title="One board for all tasks" icon="layers">
+    There is a single overall ranking today. Per-category boards are on the [roadmap](/roadmap).
+  </Accordion>
+</AccordionGroup>

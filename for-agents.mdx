@@ -1,0 +1,99 @@
+---
+title: "Use these docs in your editor and agents"
+sidebarTitle: "Editors & agents"
+description: "Connect DualMind docs to Cursor, VS Code, Claude Code and other AI tools through MCP, llms.txt and Markdown pages."
+keywords: ["MCP", "llms.txt", "skill.md", "cursor", "vs code", "agents", "AI tools"]
+icon: "bot"
+tag: "New"
+---
+
+Every page on this site is also available in formats AI tools read well. Hook them up and your editor or agent can answer questions about DualMind, and write API code, from the current docs instead of guessing.
+
+<Columns cols={2}>
+  <Card title="MCP server" icon="plug">
+    Search these docs from any MCP client at `https://docs.dualmindlab.tech/mcp`.
+  </Card>
+  <Card title="llms.txt" icon="file-text" href="https://docs.dualmindlab.tech/llms.txt">
+    An index of every page, plus `llms-full.txt` with the full text.
+  </Card>
+  <Card title="Markdown pages" icon="file-code">
+    Add `.md` to any page URL, or use **Copy page** in the page menu.
+  </Card>
+  <Card title="skill.md" icon="sparkles" href="https://docs.dualmindlab.tech/skill.md">
+    A machine-readable summary of what agents can do with the DualMind API.
+  </Card>
+</Columns>
+
+## Connect the MCP server
+
+The docs MCP server exposes search over this site. It is read-only and needs no account.
+
+<Tabs>
+  <Tab title="Cursor" icon="mouse-pointer-2">
+    Open the page menu (top right of any page) and choose **Connect to Cursor**, or add this to `~/.cursor/mcp.json`:
+
+    ```json ~/.cursor/mcp.json
+    {
+      "mcpServers": {
+        "dualmind-docs": { "url": "https://docs.dualmindlab.tech/mcp" }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="VS Code" icon="code">
+    Choose **Connect to VS Code** from the page menu, or add it to `.vscode/mcp.json` in your project:
+
+    ```json .vscode/mcp.json
+    {
+      "servers": {
+        "dualmind-docs": { "type": "http", "url": "https://docs.dualmindlab.tech/mcp" }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Claude Code" icon="terminal">
+    ```bash
+    claude mcp add --transport http dualmind-docs https://docs.dualmindlab.tech/mcp
+    ```
+  </Tab>
+  <Tab title="Any client" icon="plug">
+    Use **Copy MCP install command** in the page menu, or run:
+
+    ```bash
+    npx add-mcp https://docs.dualmindlab.tech/mcp
+    ```
+
+    Clients that support discovery can also find the server at `https://docs.dualmindlab.tech/.well-known/mcp`.
+  </Tab>
+</Tabs>
+
+## Give your agent a head start
+
+Paste this prompt into your coding assistant together with the MCP server or `llms-full.txt`:
+
+<Prompt description="Build a small DualMind Arena client" actions={["copy", "cursor"]} icon="swords">
+You are helping me build a small client for the DualMind Arena API.
+
+- Base URL: https://api.dualmindlab.tech. Use only documented public endpoints from docs.dualmindlab.tech.
+- Auth: read an access token from the DUALMIND_TOKEN environment variable and send it as `Authorization: Bearer <token>`. Never hard-code tokens and don't invent API keys.
+- Flow: POST /api/arena/dualchat with a prompt, show agent1.message and agent2.message as "Model A" and "Model B" without model names, ask me to vote left/right/tie/both-bad, POST /api/arena/model-vote with the comparisonId, then reveal agent1.model and agent2.model.
+- Use a 150 second timeout for battles. If a message starts with "[System Note]", warn me that a fallback model answered.
+- Handle 401 (token expired) and print the X-Correlation-Id header on errors.
+</Prompt>
+
+## What agents are told
+
+Pages served as Markdown to agents include a short note with the essentials: the base URL, how to authenticate, the battle-then-vote flow, and which endpoints are public. That keeps generated code on the documented path.
+
+<Tip>
+  Working without MCP? The page menu's **Open in ChatGPT**, **Open in Claude** and **Open in Perplexity** options start a chat with the current page as context.
+</Tip>
+
+<CardGroup cols={2}>
+  <Card title="API overview" icon="code" href="/api-reference/introduction">
+    Endpoints, auth and conventions.
+  </Card>
+  <Card title="Run a battle end to end" icon="swords" href="/api-reference/guides/run-a-battle">
+    The flow your agent should follow.
+  </Card>
+</CardGroup>

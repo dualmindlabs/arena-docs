@@ -1,0 +1,107 @@
+---
+title: "Stream responses"
+sidebarTitle: "Streaming"
+description: "Read a model's reply token by token with Server-Sent Events."
+keywords: ["streaming", "sse", "server-sent events", "chat stream"]
+icon: "radio"
+---
+
+`POST /api/arena/chat/stream` takes the same body as [Chat](/api-reference/chat/single-chat) and streams the reply as [Server-Sent Events](https://developer.mozilla.org/docs/Web/API/Server-sent_events). Use it when you want text on screen as soon as the model starts writing.
+
+## The event stream
+
+Each event is one `data:` line holding a JSON object, followed by a blank line.
+
+```text
+data: {"object":"ai.stream.delta","delta":{"type":"output_text","text":"There once"}}
+
+data: {"object":"ai.stream.delta","delta":{"type":"output_text","text":" was a packet"}}
+
+data: {"object":"ai.stream.done","finishReason":"stop"}
+```
+
+| `object` | Meaning | Fields |
+| :-- | :-- | :-- |
+| `ai.stream.delta` | A chunk of text | `delta.text` |
+| `ai.stream.done` | Generation finished | `finishReason` |
+| `ai.error` | Something went wrong | `code`, `message` |
+
+<Note>
+  The stream endpoint answers with one model and doesn't save the turn to a thread. For battles, or to keep history, use [Start a battle](/api-reference/chat/dual-chat) or [Chat](/api-reference/chat/single-chat) with a `threadId`.
+</Note>
+
+## Read the stream
+
+The endpoint is a `POST`, so use `fetch` (or your HTTP client's streaming mode) rather than the browser's `EventSource`.
+
+<CodeGroup>
+```bash cURL
+curl -N {{apiBase}}/api/arena/chat/stream \
+  -H "Authorization: Bearer $DUALMIND_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Write a limerick about latency", "model": "auto"}'
+```
+
+```javascript stream.mjs {14-20}
+const res = await fetch("{{apiBase}}/api/arena/chat/stream", {
+  method: "POST",
+  headers: { Authorization: `Bearer ${process.env.DUALMIND_TOKEN}`, "Content-Type": "application/json" },
+  body: JSON.stringify({ prompt: "Write a limerick about latency", model: "auto" }),
+});
+if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+let buffer = "";
+for (;;) {
+  const { value, done } = await reader.read();
+  if (done) break;
+  buffer += value;
+  const events = buffer.split("\n\n");
+  buffer = events.pop(); // keep a partial event for the next read
+  for (const evt of events) {
+    if (!evt.startsWith("data: ")) continue;
+    const msg = JSON.parse(evt.slice(6));
+    if (msg.object === "ai.stream.delta") process.stdout.write(msg.delta.text);
+    else if (msg.object === "ai.error") throw new Error(`${msg.code}: ${msg.message}`);
+  }
+}
+```
+
+```python stream.py {11-18}
+import json, os, requests
+
+with requests.post(
+    "{{apiBase}}/api/arena/chat/stream",
+    headers={"Authorization": f"Bearer {os.environ['DUALMIND_TOKEN']}"},
+    json={"prompt": "Write a limerick about latency", "model": "auto"},
+    stream=True,
+    timeout=120,
+) as r:
+    r.raise_for_status()
+    for line in r.iter_lines(decode_unicode=True):
+        if not line or not line.startswith("data: "):
+            continue
+        msg = json.loads(line[6:])
+        if msg["object"] == "ai.stream.delta":
+            print(msg["delta"]["text"], end="", flush=True)
+        elif msg["object"] == "ai.error":
+            raise RuntimeError(f"{msg['code']}: {msg['message']}")
+```
+</CodeGroup>
+
+## Tips
+
+<CardGroup cols={2}>
+  <Card title="Cancel early" icon="square">
+    Abort the request (for example with an `AbortController`) to stop generation. The server stops when the connection closes.
+  </Card>
+  <Card title="Errors arrive in-band" icon="circle-alert">
+    Once streaming starts the status is already `200`, so failures come as an `ai.error` event. Always handle it.
+  </Card>
+  <Card title="Render Markdown at the end" icon="file-text">
+    Chunks can split Markdown and code fences. Show raw text while streaming and render Markdown once `ai.stream.done` arrives.
+  </Card>
+  <Card title="Pick a model" icon="cpu">
+    `model` takes a `modelName`, a `modelId` or `auto` (a random Groq or Google AI Studio model).
+  </Card>
+</CardGroup>

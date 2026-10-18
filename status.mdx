@@ -1,0 +1,50 @@
+---
+title: "API status"
+sidebarTitle: "Status"
+description: "Check the DualMind API from your browser, and set up your own uptime monitoring."
+keywords: ["status", "uptime", "health", "monitoring", "incident"]
+icon: "activity"
+---
+
+import { ApiStatus } from "/snippets/api-status.jsx"
+
+<ApiStatus />
+
+This widget calls the public health endpoint, [`GET /health`](/api-reference/utilities/health), straight from your browser. A green **Operational** pill means the API answered `200` with `"status": "healthy"`.
+
+## Monitor it yourself
+
+<Steps>
+  <Step title="Point a monitor at the health endpoint">
+    Use any HTTP uptime service and check `{{apiBase}}/health` every minute or so. No token is needed.
+  </Step>
+  <Step title="Assert on the body, not just the status code">
+    Check that the JSON contains `"status": "healthy"`:
+
+    ```bash check-dualmind.sh icon="terminal"
+    curl -fsS --max-time 10 {{apiBase}}/health | grep -q '"status":"healthy"' \
+      && echo "DualMind API is up" || echo "DualMind API is DOWN"
+    ```
+  </Step>
+  <Step title="Watch latency">
+    Health checks normally answer in well under a second. Battles take longer because they wait for two models; see [Latency and speed](/concepts/latency-measurement).
+  </Step>
+</Steps>
+
+## If something looks wrong
+
+<AccordionGroup>
+  <Accordion title="Health is green but battles fail" icon="swords">
+    The API is up but a model provider may be having trouble. Battles still return `200`; the affected side is answered by a fallback model and starts with a **[System Note]**. Try again or pick different models in Side by Side.
+  </Accordion>
+  <Accordion title="Every call returns 401" icon="key-round">
+    Your access token has expired. Copy a fresh one from the Arena; see [Authentication](/api-reference/authentication).
+  </Accordion>
+  <Accordion title="Health is red or unreachable" icon="circle-alert">
+    Check your own network first, then email [{{supportEmail}}](mailto:{{supportEmail}}) with the time and any `X-Correlation-Id` headers you have.
+  </Accordion>
+</AccordionGroup>
+
+<Card title="Changelog" icon="history" href="/changelog" horizontal>
+  Infrastructure changes and fixes are announced in the changelog, which also has an RSS feed.
+</Card>

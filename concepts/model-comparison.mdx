@@ -1,61 +1,106 @@
 ---
-title: "Model Comparison"
-sidebarTitle: "Comparison Modes"
-description: "Explore the different ways to compare AI models in DualMind Arena — Random, Topper, and Manual modes."
-keywords: ["modes", "random battle", "topper", "manual comparison"]
+title: "Arena modes"
+sidebarTitle: "Arena modes"
+description: "Battle, Side by Side and Direct Chat: three ways to put models to work, and the Topper pairing available through the API."
+keywords: ["modes", "battle", "side by side", "direct chat", "topper", "random"]
+icon: "swords"
 ---
 
-## Comparison Modes
+import FallbackNote from "/snippets/fallback-note.mdx"
 
-DualMind Arena offers three distinct ways to evaluate models, each serving a different research purpose.
+The mode menu at the top of the Arena switches between three modes. Battles and Side by Side comparisons can be voted on; Direct Chat is for trying one model on its own.
 
-### 1. Random Battle (Discovery)
+<CardGroup cols={3}>
+  <Card title="Battle" icon="swords">
+    Two **anonymous** models, picked for you. Vote, then see who they were.
+  </Card>
+  <Card title="Side by Side" icon="columns-2">
+    **You pick** both models. Great for A/B tests.
+  </Card>
+  <Card title="Direct Chat" icon="message-circle">
+    Talk to **one model**, yours or the Arena's pick.
+  </Card>
+</CardGroup>
 
-In **Random Battle**, the system selects two different models from the active pool at random.
+<Frame caption="Switch modes from the menu at the top of the Arena." hint="Battle is the default.">
+  <img src="/images/arena-modes.jpg" alt="Arena mode menu listing Battle, Side by Side and Direct Chat" style={{ maxWidth: "320px" }} />
+</Frame>
 
-**Best for:**
-- **Unbiased Discovery**: Finding hidden gems among smaller or open-source models.
-- **Fair Leaderboard Data**: Contributing the most valuable, unbiased data to the global rankings.
-- **General Testing**: Checking how models handle a wide variety of prompts without preconceptions.
+<Panel>
+  <Card title="API cheat sheet" icon="code">
+    - **Battle**: `dualchat` with a `prompt`
+    - **Topper**: `dualchat` with `selectionMode: "topper"`
+    - **Side by Side**: `dualchat` with `model1` and `model2`
+    - **Direct Chat**: `chat` with `model` or `auto`
+  </Card>
+</Panel>
 
-<Note>
-This mode contributes the highest weight to the global ELO leaderboard because it is the most statistically neutral.
-</Note>
+## How models are paired
 
-### 2. Topper Battle (Challenge)
+```mermaid
+flowchart LR
+    P[Your prompt] --> M{Mode}
+    M -->|Battle| R[Random pair<br/>Groq + Google AI Studio models]
+    M -->|Side by Side| S[Your two picks<br/>any active model]
+    M -->|Direct Chat| D[One model<br/>your pick or auto]
+    M -.->|API only| T[Topper pair<br/>best win rate vs random challenger]
+    R --> V[Vote]
+    S --> V
+    T --> V
+    D --> X[No vote]
+    classDef dm fill:#00D9FF1F,stroke:#09738F,stroke-width:1px
+    classDef dmv fill:#8B5CF61F,stroke:#7C3AED,stroke-width:1px
+    classDef dmn fill:#8C919A14,stroke:#8C919A,stroke-width:1px
+    class P,M dmn
+    class R,S,D dm
+    class T,V dmv
+    class X dmn
+```
 
-In **Topper Battle**, the current #1 ranked model (the "King of the Hill") is paired against a random challenger.
+<Tabs>
+  <Tab title="Battle" icon="swords">
+    The Arena picks two **different** models at random from the auto-selectable pool, sends both the same prompt in parallel, and labels the answers **Model A** and **Model B**. Names are shown only after you vote.
 
-**Best for:**
-- **Stress Testing Strategies**: Specifically trying to break the top model to see if others can handle edge cases better.
-- **Verification**: Confirming if the top-ranked model truly deserves its spot across different domains (coding, creative writing, math).
-- **Update Checks**: Quickly checking if a newly released model can dethrone the current champion.
+    **Use it for:** unbiased discovery and the cleanest leaderboard signal.
 
-### 3. Side-by-Side (Manual Selection)
+    In the API this is `POST /api/arena/dualchat` with no `model1`/`model2` and `selectionMode: "random"` (the default).
+  </Tab>
+  <Tab title="Side by Side" icon="columns-2">
+    Choose the left and right model yourself from the model list. Any active model can be used, including the Cloudflare Workers AI models that random battles skip.
 
-In **Side-by-Side** mode, you explicitly choose Model A and Model B from the dropdown menu.
+    **Use it for:** comparing two specific models on your own prompts, checking a new release against an incumbent, or testing a language or domain you care about.
 
-**Best for:**
-- **A/B Testing**: Directly comparing two specific versions (e.g., Llama 3 vs Llama 2).
-- **Regression Testing**: Checking if a specific model response has degraded compared to another.
-- **Use-Case Validation**: testing two specific models known for coding to see which is better for your specific language.
+    In the API, set **both** `model1` and `model2`. Setting only one returns `400 INVALID_REQUEST`.
+  </Tab>
+  <Tab title="Direct Chat" icon="message-circle">
+    A plain conversation with one model. Pick a model, or leave it on auto and the Arena chooses one for you. There is nothing to vote on.
 
-## Voting Options
+    **Use it for:** exploring a model in depth before comparing it.
 
-When voting, accuracy is key. You have four options:
+    In the API this is `POST /api/arena/chat` (or `/api/arena/chat/stream` for token-by-token output).
+  </Tab>
+  <Tab title="Topper (API)" icon="crown">
+    `selectionMode: "topper"` pairs the model with the best current **win rate** against a random challenger. It is available through the API; the Arena UI uses random battles.
 
-| Vote | Meaning | Statistical Impact |
-| :--- | :--- | :--- |
-| **Left is Better** | Model A provided a distinctly better response | Model A wins, Model B loses |
-| **Right is Better** | Model B provided a distinctly better response | Model B wins, Model A loses |
-| **Tie** | Both models gave high-quality, helpful responses | Points shared (benefits lower-rated model) |
-| **Both Bad** | Neither model followed instructions or gave a good answer | No points awarded; flagged for review |
+    **Use it for:** stress-testing the current leader.
+  </Tab>
+</Tabs>
 
-## Best Practices for Comparison
+## Choosing a good prompt
 
-To get the most out of DualMind Arena:
+<AccordionGroup>
+  <Accordion title="Make it discriminating" icon="target">
+    "Say hello" gets near-identical answers from every model. Prompts that need reasoning, careful instruction following, or a specific format show real differences.
+  </Accordion>
+  <Accordion title="Add constraints" icon="list-checks">
+    Ask for a word limit, a format (a table, JSON, a haiku), or something to avoid. Following constraints is a big part of quality.
+  </Accordion>
+  <Accordion title="Check facts" icon="search-check">
+    For factual prompts, check both answers. A confident wrong answer should lose to a hesitant right one.
+  </Accordion>
+  <Accordion title="Judge content, not formatting" icon="type">
+    Bold text and bullet points make an answer look organised. Ask whether it actually answers the question better.
+  </Accordion>
+</AccordionGroup>
 
-1. **Use Challenging Prompts**: Simple "Hello" prompts don't reveal intelligence. Ask for complex reasoning, code generation, or creative nuance.
-2. **Check Constraints**: Did the model follow negative constraints? (e.g., "Write a story *without* using the letter 'e'").
-3. **Verify Facts**: For factual queries, check if the models hallucinated wrong information.
-4. **Ignore Formatting**: Try to look past bolding or bullet points and focus on the *content* quality.
+<FallbackNote />

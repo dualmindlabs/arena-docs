@@ -1,131 +1,123 @@
 ---
-title: "Welcome to DualMind Arena"
+title: "DualMind Arena"
 sidebarTitle: "Introduction"
-description: "The blind AI model comparison platform. Compare leading AI models side-by-side, vote on the best response, and discover model quality through crowd-sourced benchmarks."
-keywords: ["DualMind", "AI arena", "model comparison", "LLM benchmark", "blind testing", "ELO leaderboard"]
+description: "Blind, side-by-side AI model evaluation. Two anonymous models answer the same prompt, you pick the better one, and every vote moves a live ELO leaderboard."
+keywords: ["DualMind", "AI arena", "model comparison", "LLM leaderboard", "blind testing", "ELO"]
+mode: "frame"
+icon: "house"
+hideFooterPagination: true
 ---
 
-<img
-  className="block dark:hidden"
-  src="/logo/light.svg"
-  alt="DualMind Arena"
-/>
-<img
-  className="hidden dark:block"
-  src="/logo/dark.svg"
-  alt="DualMind Arena"
-/>
+import { BattleDemo } from "/snippets/battle-demo.jsx"
 
-## What is DualMind Arena? <Badge>v2.0</Badge>
+<div className="dm-hero">
+  <span className="dm-eyebrow">DualMind Arena · Documentation</span>
+  <h1 className="dm-hero-title">Benchmarks are broken.<span className="dm-human">Human judgment isn't.</span></h1>
+  <p className="dm-hero-lede">
+    Two anonymous models answer the same prompt. You pick the better one, call a tie, or mark both bad.
+    Names appear after your vote, and every vote feeds a live ELO leaderboard.
+  </p>
+  <div className="dm-hero-actions">
+    <a className="dm-btn dm-btn-primary" href="/quickstart">Your first battle →</a>
+    <a className="dm-btn dm-btn-ghost" href="/api-reference/introduction">Explore the API</a>
+  </div>
+  <div className="dm-stats">
+    <span><strong>50+</strong> models</span>
+    <span><strong>3</strong> providers</span>
+    <span><strong>3</strong> arena modes</span>
+    <span><strong>1</strong> live leaderboard</span>
+  </div>
+</div>
 
-DualMind Arena is a **blind AI model comparison platform** — submit a prompt, receive responses from two competing models simultaneously, vote on the better one, and contribute to a community-driven <Tooltip tip="ELO rating — the same system used in chess. A model gains points by beating high-ranked opponents and loses points against lower-ranked ones.">ELO-based leaderboard</Tooltip>.
+<h2 className="dm-h2">Start here</h2>
 
-The key insight: **knowing a model's name changes how you judge it.** DualMind hides model identities until after you vote — so quality determines the ranking, not brand recognition.
+<Columns cols={3}>
+  <Tile href="/quickstart" title="Quickstart" description="Sign in, send a prompt, vote. About two minutes.">
+    <img src="/images/tile-battle-light.svg" alt="Two anonymous answers side by side with vote buttons" className="block dark:hidden" />
+    <img src="/images/tile-battle-dark.svg" alt="Two anonymous answers side by side with vote buttons" className="hidden dark:block" />
+  </Tile>
+  <Tile href="/concepts/model-comparison" title="Arena modes" description="Battle, Side by Side and Direct Chat, and when to use each.">
+    <img src="/images/tile-modes-light.svg" alt="The Arena mode menu" className="block dark:hidden" />
+    <img src="/images/tile-modes-dark.svg" alt="The Arena mode menu" className="hidden dark:block" />
+  </Tile>
+  <Tile href="/api-reference/introduction" title="API reference" description="The REST API behind the Arena, with a live playground.">
+    <img src="/images/tile-api-light.svg" alt="An API request in a code window" className="block dark:hidden" />
+    <img src="/images/tile-api-dark.svg" alt="An API request in a code window" className="hidden dark:block" />
+  </Tile>
+</Columns>
 
-<CardGroup cols={2}>
-  <Card title="Arena Battle Mode" icon="swords" color="#0EA5E9">
-    Submit one prompt to two AI models simultaneously. Vote blind. See the truth.
-  </Card>
-  <Card title="ELO Leaderboard" icon="ranking-star" color="#8B5CF6">
-    Every vote shifts real ELO ratings. The leaderboard reflects collective human preference, not marketing budgets.
-  </Card>
-  <Card title="Conversation Threads" icon="folder-open" color="#10B981">
-    Organize comparisons into persistent threads. Share publicly, keep private, or distribute via link.
-  </Card>
-  <Card title="Live Latency Metrics" icon="gauge-high" color="#F59E0B">
-    Time to First Token and Tokens/Second tracked for every response. Speed is measured separately — never folded into quality.
-  </Card>
-</CardGroup>
-
----
-
-## How it works
+<h2 className="dm-h2">How a battle works</h2>
 
 ```mermaid
 sequenceDiagram
-    participant You
+    autonumber
+    actor You
     participant Arena as DualMind Arena
     participant A as Model A (hidden)
     participant B as Model B (hidden)
-
-    You->>Arena: Submit a prompt
-    Arena->>A: Forward prompt
-    Arena->>B: Forward prompt (parallel)
-    A-->>Arena: Stream response
-    B-->>Arena: Stream response
-    Arena-->>You: Display both responses (blind)
-    You->>Arena: Vote — A, B, or Tie
-    Arena-->>You: Reveal model identities
-    Arena-->>You: Update ELO rankings live
+    You->>Arena: Send a prompt
+    par In parallel
+        Arena->>A: Same prompt
+        Arena->>B: Same prompt
+    end
+    A-->>Arena: Answer
+    B-->>Arena: Answer
+    Arena-->>You: Both answers, labelled A and B
+    You->>Arena: Vote: left, right, tie or both bad
+    Arena-->>You: Model names revealed
+    Note over Arena: Your vote updates the ELO leaderboard
 ```
 
----
+<h2 className="dm-h2">Try one now</h2>
 
-## Platform modes
+No account needed: read both answers, vote, and watch what happens.
 
-<Tabs>
-  <Tab title="⚔️ Arena Battle">
-    Two randomly-selected models. One prompt. Zero brand bias.
+<BattleDemo />
 
-    Responses appear side-by-side under anonymous labels — **Model A** and **Model B**. Vote for the better response, then see which models you were actually comparing.
+<Frame caption="A battle in the Arena: answers labelled Model A and Model B, with the vote bar underneath. Sample answers shown.">
+  <img src="/images/arena-battle.jpg" alt="The DualMind Arena battle screen with two anonymous answers and the buttons Left is Better, It's a Tie, Both are Bad and Right is Better" />
+</Frame>
 
-    This is the primary mode for leaderboard contributions. Every vote carries statistical weight in the ELO system.
-  </Tab>
-  <Tab title="💬 Single Chat">
-    Direct conversation with a specific model of your choice.
-
-    Useful when you want to evaluate a known model in depth, test specific capabilities, or have a sustained conversation without the comparison framing.
-  </Tab>
-  <Tab title="📂 Threaded Conversations">
-    Organize your comparisons into named threads with full history.
-
-    - **Private** — visible only to you
-    - **Unlisted** — accessible via link, not listed publicly
-    - **Public** — discoverable by anyone
-
-    Perfect for research documentation, sharing interesting comparisons, or building a personal evaluation archive.
-  </Tab>
-</Tabs>
-
----
-
-## What makes this different
-
-<AccordionGroup>
-  <Accordion title="Why blind testing?" icon="eye-slash">
-    In every study on AI evaluation, knowing a model's identity introduces measurable bias. Users consistently rate GPT-4 responses higher when they know it's GPT-4 — even when the content is identical to a competitor's output.
-
-    Blind testing removes this entirely at the architecture level. Model names are never sent to the client until after a vote is submitted. This is enforced as a data contract, not a UI convention.
-  </Accordion>
-  <Accordion title="Why ELO instead of win rate?" icon="chart-line">
-    Win rate is a static snapshot. A model with a 60% win rate against weak opponents tells you nothing about how it performs against the best.
-
-    ELO is dynamic. It adjusts based on the strength of who you beat. A model that defeats high-ranked competitors gains more points than one that beats weak ones. This produces a leaderboard that reflects true relative quality, not raw vote counts.
-  </Accordion>
-  <Accordion title="Why measure latency separately?" icon="clock">
-    A faster model response creates an immediate impression of fluency, even before the user reads a word. This is well-documented in UX research.
-
-    Latency is infrastructure — it reflects hosting, not intelligence. The Arena displays Time to First Token (TTFT) and Tokens per Second (TPS) as separate, transparent metrics — never folded into a quality score.
-  </Accordion>
-</AccordionGroup>
-
----
-
-## Start here
+<h2 className="dm-h2">Explore</h2>
 
 <CardGroup cols={2}>
-  <Card title="Quickstart" icon="rocket" href="/quickstart" color="#0EA5E9">
-    Run your first comparison in under two minutes.
+  <Card title="Voting" icon="vote" href="/concepts/voting">
+    The four vote options and what happens after you vote.
   </Card>
-  <Card title="How DualMind Works" icon="lightbulb" href="/concepts/how-dualmind-works" color="#8B5CF6">
-    Deep dive into blind comparison, ELO scoring, and streaming architecture.
+  <Card title="Leaderboard" icon="trophy" href="/concepts/leaderboard">
+    How ELO ranks models, and how to read the numbers.
   </Card>
-  <Card title="Evaluation Philosophy" icon="scale-balanced" href="/concepts/evaluation-philosophy" color="#10B981">
-    The reasoning behind how we design fair, meaningful AI comparisons.
+  <Card title="Threads and sharing" icon="messages-square" href="/concepts/threads">
+    Keep battles in threads and share them with a link.
   </Card>
-  <Card title="Roadmap" icon="map" href="/roadmap" color="#F59E0B">
-    What we're building next and why.
+  <Card title="Models and providers" icon="cpu" href="/concepts/models-and-providers">
+    Which models you can battle, from Groq, Google AI Studio and Cloudflare Workers AI.
+  </Card>
+  <Card title="Run a battle from code" icon="terminal" href="/api-reference/guides/run-a-battle">
+    Start a battle, hide the names, vote, reveal. End to end.
+  </Card>
+  <Card title="What's new" icon="sparkles" href="/changelog">
+    The API moved to Cloudflare, new providers, and more.
   </Card>
 </CardGroup>
 
-<Check>Ready? Head to the [Quickstart guide](/quickstart) and run your first comparison.</Check>
+<h2 className="dm-h2">Why blind?</h2>
+
+<AccordionGroup>
+  <Accordion title="Names change how you judge" icon="eye-off">
+    When you know which model wrote an answer, brand reputation leaks into your judgment. The Arena labels
+    answers A and B and shows the names only after you vote, so the answer is judged on its own.
+  </Accordion>
+  <Accordion title="ELO beats a raw win rate" icon="chart-line">
+    Beating a strong model counts for more than beating a weak one. <Tooltip headline="ELO" tip="A chess-style rating that moves after every vote, weighted by the opponent's strength." cta="How it works" href="/concepts/leaderboard">ELO</Tooltip> adjusts for opponent strength, so
+    the leaderboard reflects relative quality, not just who played the most easy matches.
+  </Accordion>
+  <Accordion title="Speed is shown, not scored" icon="timer">
+    Both models run in parallel and their answers appear together, so neither gets a head start. Response
+    time is recorded separately and never folded into the ranking.
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  Questions or feedback? Write to [support@dualmindlab.tech](mailto:support@dualmindlab.tech) or see the [FAQ](/faq).
+</Note>

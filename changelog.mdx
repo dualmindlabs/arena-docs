@@ -1,45 +1,104 @@
 ---
 title: "Changelog"
-sidebarTitle: "Changelog"
-description: "Latest updates and releases for DualMind Arena."
+description: "New features, fixes and infrastructure changes across DualMind Arena and its API."
 keywords: ["changelog", "updates", "releases", "history"]
+icon: "history"
+rss: true
 ---
 
-# Changelog
+<Update label="October 2026" description="Docs and website" tags={["Docs", "API"]} rss={{ title: "Refreshed docs with a full API reference", description: "New design, an OpenAPI-based API reference with a playground, new guides, a status page, a glossary and interactive demos." }}>
+  ## Refreshed docs with a full API reference
 
-Stay up to date with the latest improvements to DualMind Arena.
+  - New design in the DualMind brand, matching [dualmindlab.tech](https://dualmindlab.tech).
+  - **API reference** generated from the live routes as an OpenAPI 3.1 spec, with a playground and cURL, JavaScript and Python examples for every endpoint.
+  - New guides: [Authentication](/api-reference/authentication), [Errors](/api-reference/errors), [Run a battle](/api-reference/guides/run-a-battle) and [Streaming](/api-reference/guides/streaming).
+  - New concept pages for [voting](/concepts/voting), the [leaderboard](/concepts/leaderboard), [threads](/concepts/threads) and [models and providers](/concepts/models-and-providers).
+  - The API base URL is `https://api.dualmindlab.tech`.
+  - New [status page](/status) with a live health check, a [glossary](/glossary), and a page on [using these docs from your editor and agents](/for-agents) (MCP server, `llms.txt`).
+  - Interactive pieces: a blind battle demo on the [voting](/concepts/voting) page, plus an ELO calculator and a live leaderboard on the [leaderboard](/concepts/leaderboard) page.
 
-<Update date="2026-02-07" version="2.0.0">
-  ## Arena 2.0 Launch
+  ## New dualmindlab.tech
 
-  Major platform upgrade delivering a comprehensive blind comparison experience.
-
-  ### Features
-  - **Interactive API Playground**: Test API endpoints directly from the documentation.
-  - **Community Leaderboard**: Real-time ranking of models based on thousands of user votes.
-  - **Enhanced Sharing**: Share specific comparisons or entire conversation threads with public links.
-  - **Mobile Optimization**: Fully responsive design for voting on the go.
-
-  ### Documentation
-  - Complete rewrite of public documentation
-  - New guides for "How it Works" and "Model Comparison"
+  The company site was rebuilt as a seven-chapter scroll story, with new privacy, terms and contact pages.
 </Update>
 
-<Update date="2025-01-15" version="1.5.0">
-  ## Topper Mode & Analytics
+<Update label="September 2026" description="Reliability" tags={["API", "Fix"]}>
+  ## More reliable data access
 
-  ### Features
-  - **Topper Mode**: Challenge the current #1 model against random challengers.
-  - **Text-to-Speech**: Listen to model responses (accessibility feature).
-  - **Improved Thread Management**: Better organization for your conversation history.
+  The API now attaches its service credentials to every database request, fixing intermittent failures when loading threads, models and the leaderboard.
 </Update>
 
-<Update date="2024-12-01" version="1.0.0">
-  ## Public Beta
+<Update label="August 2026" description="The API moves to Cloudflare" tags={["API", "Infrastructure"]}>
+  ## API on Cloudflare at api.dualmindlab.tech
 
-  Initial public release of DualMind Arena.
-  
-  - **Dual Chat**: Compare two models side-by-side.
-  - **Voting**: Submit preference for A or B.
-  - **Basic Accounts**: Save your history.
+  The DualMind API moved from Azure App Service to **Cloudflare Containers**, served at `https://api.dualmindlab.tech`.
+
+  - The Arena now talks to the new URL.
+  - A scheduled ping keeps the API warm, so requests rarely wait on a cold start.
+  - A smaller container image with a ReadyToRun build starts faster.
+  - Deploys run automatically from GitHub Actions.
+
+  ## Scaling experiments
+
+  - `GET /health` now includes an `instanceId` showing which API instance served the request.
+  - We trialled spreading traffic across several instances, then returned to a single always-warm instance while shared state is built. More on the [roadmap](/roadmap).
+
+  ## Arena
+
+  - An early-access waitlist page went live at [early.dualmindlab.tech](https://early.dualmindlab.tech).
+  - The Arena codebase was cleaned up and now runs lint checks in CI.
+</Update>
+
+<Update label="June 2026" description="A faster, safer Arena" tags={["Arena"]}>
+  - Skeleton loading states for the leaderboard and battle view.
+  - The leaderboard loads lazily and non-critical scripts are deferred, so the Arena opens faster.
+  - Link previews (Open Graph and Twitter cards) for public pages.
+  - A custom 404 page.
+  - Stronger input sanitisation in every chat input.
+</Update>
+
+<Update label="May 2026" description="Sign-up" tags={["Arena"]}>
+  - You can now resend the sign-up confirmation email from the sign-in screen.
+</Update>
+
+<Update label="March 2026" description="New providers and fallback" tags={["Models", "API", "Arena"]}>
+  ## Cloudflare Workers AI models
+
+  30+ open models from Cloudflare Workers AI joined the Arena, including Llama 3.x, Mistral, Qwen, QwQ, DeepSeek R1 distills, Gemma and Granite. They're available when you pick them in Side by Side or Direct Chat. The ELO leaderboard was set up for the new roster.
+
+  ## Google AI Studio models
+
+  Gemini and Gemma models are now available through Google AI Studio. The Bytez provider was retired.
+
+  ## Automatic fallback
+
+  If a model is unreachable or times out, a basic fallback model answers instead and the reply starts with a **[System Note]**, rather than the battle failing.
+
+  ## Arena
+
+  - Redesigned sign-in and sign-up screens.
+  - Welcome emails for new accounts.
+  - A redesigned leaderboard with an explanation of ELO.
+</Update>
+
+<Update label="February 13, 2026" description="Voting fix" tags={["Fix"]}>
+  - Thread history now shows **your own** vote on each battle, fixing a race that could show the wrong vote state.
+</Update>
+
+<Update label="February 7, 2026" description="Arena 2.0" tags={["Arena", "Docs"]}>
+  ## Arena 2.0
+
+  - Community leaderboard ranking models from user votes.
+  - Share comparisons and whole threads with public links.
+  - Fully responsive design for voting on the go.
+  - First public documentation.
+</Update>
+
+<Update label="January 2025" description="Topper mode" tags={["Arena"]}>
+  - **Topper mode**: the current leader against a random challenger.
+  - Better thread management.
+</Update>
+
+<Update label="December 2024" description="Public beta" tags={["Arena"]}>
+  First public release of DualMind Arena: side-by-side battles, voting, and saved history.
 </Update>
