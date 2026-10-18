@@ -5,7 +5,10 @@ description: "Blind, side-by-side AI model evaluation. Two anonymous models answ
 keywords: ["DualMind", "AI arena", "model comparison", "LLM leaderboard", "blind testing", "ELO"]
 mode: "frame"
 icon: "house"
+hideFooterPagination: true
 ---
+
+import { BattleDemo } from "/snippets/battle-demo.jsx"
 
 <div className="dm-hero">
   <span className="dm-eyebrow">DualMind Arena · Documentation</span>
@@ -28,17 +31,20 @@ icon: "house"
 
 <h2 className="dm-h2">Start here</h2>
 
-<CardGroup cols={3}>
-  <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Sign in, send a prompt, vote. About two minutes.
-  </Card>
-  <Card title="Arena modes" icon="swords" href="/concepts/model-comparison">
-    Battle, Side by Side and Direct Chat, and when to use each.
-  </Card>
-  <Card title="API reference" icon="code" href="/api-reference/introduction">
-    The same REST API the Arena uses, with cURL, JavaScript and Python examples.
-  </Card>
-</CardGroup>
+<Columns cols={3}>
+  <Tile href="/quickstart" title="Quickstart" description="Sign in, send a prompt, vote. About two minutes.">
+    <img src="/images/tile-battle-light.svg" alt="Two anonymous answers side by side with vote buttons" className="block dark:hidden" />
+    <img src="/images/tile-battle-dark.svg" alt="Two anonymous answers side by side with vote buttons" className="hidden dark:block" />
+  </Tile>
+  <Tile href="/concepts/model-comparison" title="Arena modes" description="Battle, Side by Side and Direct Chat, and when to use each.">
+    <img src="/images/tile-modes-light.svg" alt="The Arena mode menu" className="block dark:hidden" />
+    <img src="/images/tile-modes-dark.svg" alt="The Arena mode menu" className="hidden dark:block" />
+  </Tile>
+  <Tile href="/api-reference/introduction" title="API reference" description="The REST API behind the Arena, with a live playground.">
+    <img src="/images/tile-api-light.svg" alt="An API request in a code window" className="block dark:hidden" />
+    <img src="/images/tile-api-dark.svg" alt="An API request in a code window" className="hidden dark:block" />
+  </Tile>
+</Columns>
 
 <h2 className="dm-h2">How a battle works</h2>
 
@@ -61,6 +67,16 @@ sequenceDiagram
     Arena-->>You: Model names revealed
     Note over Arena: Your vote updates the ELO leaderboard
 ```
+
+<h2 className="dm-h2">Try one now</h2>
+
+No account needed: read both answers, vote, and watch what happens.
+
+<BattleDemo />
+
+<Frame caption="A battle in the Arena: answers labelled Model A and Model B, with the vote bar underneath. Sample answers shown.">
+  <img src="/images/arena-battle.jpg" alt="The DualMind Arena battle screen with two anonymous answers and the buttons Left is Better, It's a Tie, Both are Bad and Right is Better" />
+</Frame>
 
 <h2 className="dm-h2">Explore</h2>
 
@@ -93,7 +109,7 @@ sequenceDiagram
     answers A and B and shows the names only after you vote, so the answer is judged on its own.
   </Accordion>
   <Accordion title="ELO beats a raw win rate" icon="chart-line">
-    Beating a strong model counts for more than beating a weak one. ELO adjusts for opponent strength, so
+    Beating a strong model counts for more than beating a weak one. <Tooltip headline="ELO" tip="A chess-style rating that moves after every vote, weighted by the opponent's strength." cta="How it works" href="/concepts/leaderboard">ELO</Tooltip> adjusts for opponent strength, so
     the leaderboard reflects relative quality, not just who played the most easy matches.
   </Accordion>
   <Accordion title="Speed is shown, not scored" icon="timer">

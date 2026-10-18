@@ -4,13 +4,16 @@ sidebarTitle: "Overview"
 description: "The REST API behind DualMind Arena: battles, votes, the leaderboard, models and threads."
 keywords: ["API", "REST", "integration", "developers", "base url"]
 icon: "code"
+tag: "Beta"
 ---
+
+import ApiBeta from "/snippets/api-beta.mdx"
 
 The Arena app is a client of a public REST API. Everything you can do in the Arena (start a battle, vote, browse the leaderboard, manage threads) you can do over HTTPS.
 
 <CardGroup cols={2}>
   <Card title="Base URL" icon="globe">
-    `https://api.dualmindlab.tech`
+    `{{apiBase}}`
   </Card>
   <Card title="Format" icon="braces">
     JSON in, JSON out (camelCase). Streaming uses Server-Sent Events.
@@ -23,24 +26,22 @@ The Arena app is a client of a public REST API. Everything you can do in the Are
   </Card>
 </CardGroup>
 
-<Warning>
-  The API is in **beta**. It's the same API the Arena uses, so it's stable in practice, but fields can be added and behaviour can change. Watch the [changelog](/changelog).
-</Warning>
+<ApiBeta />
 
 ## Endpoints at a glance
 
 | Area | Method and path | Auth |
 | :-- | :-- | :-- |
-| **Arena** | [`POST /api/arena/dualchat`](/api-reference/chat/dual-chat) Start a battle | Bearer |
-| | [`POST /api/arena/chat`](/api-reference/chat/single-chat) Chat with one model | Bearer |
-| | [`POST /api/arena/chat/stream`](/api-reference/chat/streaming) Stream a chat reply | Bearer |
-| **Voting** | [`POST /api/arena/model-vote`](/api-reference/voting/submit-vote) Submit a vote | Bearer |
-| | [`GET /api/arena/model-stats`](/api-reference/voting/get-stats) Get the leaderboard | None |
-| **Models** | [`GET /api/models`](/api-reference/models/list-models) List models | Bearer |
-| **Threads** | [`GET`](/api-reference/threads/list-threads) · [`POST /api/threads`](/api-reference/threads/create-thread) | Bearer |
-| | [`GET /api/threads/{threadId}`](/api-reference/threads/get-thread) · [`/messages`](/api-reference/threads/get-messages) | Bearer, or none for shared threads |
-| | [`PATCH`](/api-reference/threads/update-thread) · [`PATCH …/visibility`](/api-reference/threads/share-thread) · [`DELETE`](/api-reference/threads/delete-thread) | Bearer (owner) |
-| **Utilities** | [`GET /health`](/api-reference/utilities/health) · [`GET /api/settings/feature-flag/{key}`](/api-reference/utilities/feature-flags) | None |
+| **Arena** | [`POST /api/arena/dualchat`](/api-reference/chat/dual-chat) Start a battle | <Badge color="blue">Bearer</Badge> |
+| | [`POST /api/arena/chat`](/api-reference/chat/single-chat) Chat with one model | <Badge color="blue">Bearer</Badge> |
+| | [`POST /api/arena/chat/stream`](/api-reference/chat/streaming) Stream a chat reply | <Badge color="blue">Bearer</Badge> |
+| **Voting** | [`POST /api/arena/model-vote`](/api-reference/voting/submit-vote) Submit a vote | <Badge color="blue">Bearer</Badge> |
+| | [`GET /api/arena/model-stats`](/api-reference/voting/get-stats) Get the leaderboard | <Badge color="green">Public</Badge> |
+| **Models** | [`GET /api/models`](/api-reference/models/list-models) List models | <Badge color="blue">Bearer</Badge> |
+| **Threads** | [`GET`](/api-reference/threads/list-threads) · [`POST /api/threads`](/api-reference/threads/create-thread) | <Badge color="blue">Bearer</Badge> |
+| | [`GET /api/threads/{threadId}`](/api-reference/threads/get-thread) · [`/messages`](/api-reference/threads/get-messages) | <Badge color="blue">Bearer</Badge> or <Badge color="green">Public</Badge> for shared threads |
+| | [`PATCH`](/api-reference/threads/update-thread) · [`PATCH …/visibility`](/api-reference/threads/share-thread) · [`DELETE`](/api-reference/threads/delete-thread) | <Badge color="blue">Bearer</Badge> owner only |
+| **Utilities** | [`GET /health`](/api-reference/utilities/health) · [`GET /api/settings/feature-flag/{key}`](/api-reference/utilities/feature-flags) | <Badge color="green">Public</Badge> |
 
 ## Your first request
 
@@ -48,17 +49,17 @@ No token needed for the leaderboard:
 
 <CodeGroup>
 ```bash cURL
-curl https://api.dualmindlab.tech/api/arena/model-stats
+curl {{apiBase}}/api/arena/model-stats
 ```
 
 ```javascript JavaScript
-const res = await fetch("https://api.dualmindlab.tech/api/arena/model-stats");
+const res = await fetch("{{apiBase}}/api/arena/model-stats");
 console.log((await res.json()).items[0]);
 ```
 
 ```python Python
 import requests
-print(requests.get("https://api.dualmindlab.tech/api/arena/model-stats", timeout=30).json()["items"][0])
+print(requests.get("{{apiBase}}/api/arena/model-stats", timeout=30).json()["items"][0])
 ```
 </CodeGroup>
 
@@ -82,6 +83,22 @@ print(requests.get("https://api.dualmindlab.tech/api/arena/model-stats", timeout
   </Accordion>
   <Accordion title="CORS" icon="globe-lock">
     Browser requests from any origin are allowed.
+  </Accordion>
+</AccordionGroup>
+
+## Rate limits and fair use
+
+The API is shared with everyone using the Arena, so please keep usage at interactive volumes.
+
+<AccordionGroup>
+  <Accordion title="What counts as fair use" icon="scale">
+    Battles and chats driven by people, scripts that run a handful of prompts, and dashboards that read the leaderboard every few minutes are all fine. Bulk benchmarking, load tests and scraping are not; [get in touch](mailto:hello@dualmindlab.tech) first.
+  </Accordion>
+  <Accordion title="Be gentle with the leaderboard" icon="trophy">
+    The leaderboard changes slowly. Cache `GET /api/arena/model-stats` for at least a minute instead of polling it in a tight loop.
+  </Accordion>
+  <Accordion title="Expect limits to arrive" icon="gauge">
+    Published per-user limits are planned. When they arrive, requests over the limit will get `429 Too Many Requests`; back off and retry later. Changes will be announced in the [changelog](/changelog).
   </Accordion>
 </AccordionGroup>
 

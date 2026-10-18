@@ -3,7 +3,11 @@ title: "Leaderboard"
 description: "How DualMind turns votes into an ELO ranking, and how to read every number on the board."
 keywords: ["leaderboard", "elo", "ranking", "win rate"]
 icon: "trophy"
+tag: "New"
 ---
+
+import { EloCalculator } from "/snippets/elo-calculator.jsx"
+import { LiveLeaderboard } from "/snippets/live-leaderboard.jsx"
 
 The [leaderboard](https://arena.dualmindlab.tech/leaderboard/) ranks every model by its **ELO score**, the rating system chess uses. It is built only from Arena votes.
 
@@ -33,6 +37,8 @@ The [leaderboard](https://arena.dualmindlab.tech/leaderboard/) ranks every model
   After a vote, A's new rating is R<sub>A</sub> + K × (S<sub>A</sub> − E<sub>A</sub>), where S<sub>A</sub> is 1 for a win, 0 for a loss and 0.5 for a tie, and K sets how fast ratings move. B is updated the same way, so a win against a stronger opponent (low E<sub>A</sub>) earns more points.
 </Accordion>
 
+<EloCalculator />
+
 ## Reading the board
 
 <ResponseField name="Rank" type="eloRank">
@@ -51,17 +57,23 @@ The [leaderboard](https://arena.dualmindlab.tech/leaderboard/) ranks every model
   Wins as a percentage of battles (0 to 100).
 </ResponseField>
 
+## Live leaderboard
+
+Straight from the public API, refreshed when you load the page. Filter by provider or by how many battles a model has played.
+
+<LiveLeaderboard limit={10} />
+
 ## Get the data
 
 The leaderboard is public. No account or token is needed:
 
 <CodeGroup>
 ```bash cURL
-curl -s https://api.dualmindlab.tech/api/arena/model-stats | jq '.items[:5][] | {eloRank, displayName, eloScore, winRate}'
+curl -s {{apiBase}}/api/arena/model-stats | jq '.items[:5][] | {eloRank, displayName, eloScore, winRate}'
 ```
 
 ```javascript JavaScript
-const { items } = await (await fetch("https://api.dualmindlab.tech/api/arena/model-stats")).json();
+const { items } = await (await fetch("{{apiBase}}/api/arena/model-stats")).json();
 const top = items.filter(m => m.totalResponses >= 50).slice(0, 10);
 console.table(top.map(({ eloRank, displayName, providerName, eloScore }) => ({ eloRank, displayName, providerName, eloScore })));
 ```
@@ -69,7 +81,7 @@ console.table(top.map(({ eloRank, displayName, providerName, eloScore }) => ({ e
 ```python Python
 import requests
 
-items = requests.get("https://api.dualmindlab.tech/api/arena/model-stats", timeout=30).json()["items"]
+items = requests.get("{{apiBase}}/api/arena/model-stats", timeout=30).json()["items"]
 for m in [m for m in items if m["totalResponses"] >= 50][:10]:
     print(f'{m["eloRank"]:>3}  {m["displayName"]:<40} {m["eloScore"]:.0f}')
 ```

@@ -8,41 +8,53 @@ icon: "rocket"
 <Tabs>
   <Tab title="In the Arena" icon="swords">
     <Steps>
-      <Step title="Sign in">
+      <Step title="Sign in" icon="log-in">
         Open [arena.dualmindlab.tech](https://arena.dualmindlab.tech) and sign in with email, phone, GitHub or Google. Accounts are free.
 
         <Frame caption="The Arena sign-in screen">
           <img src="/images/arena-sign-in.jpg" alt="DualMind Arena sign-in screen with email, phone, GitHub and Google options" />
         </Frame>
       </Step>
-      <Step title="Stay in Battle mode">
+      <Step title="Stay in Battle mode" icon="swords">
         The Arena opens in **Battle** mode: two anonymous models, picked at random. You can switch to **Side by Side** (you choose both models) or **Direct Chat** (one model) from the mode menu at the top. See [Arena modes](/concepts/model-comparison).
+
+        <Frame caption="The mode menu at the top of the Arena">
+          <img src="/images/arena-modes.jpg" alt="Arena mode menu listing Battle, Side by Side and Direct Chat" style={{ maxWidth: "320px" }} />
+        </Frame>
       </Step>
-      <Step title="Send a prompt">
+      <Step title="Send a prompt" icon="message-square">
         Type a prompt and press Enter. Both models answer the same prompt at the same time, labelled **Model A** and **Model B**.
 
         <Tip>
           Open-ended prompts reveal more than trivia. Try: *"Explain the difference between TCP and UDP to a five-year-old using a pizza delivery analogy."*
         </Tip>
       </Step>
-      <Step title="Vote">
+      <Step title="Vote" icon="vote">
         Read both answers, then choose **Left is better**, **Right is better**, **It's a tie** or **Both are bad**. One vote per battle; it can't be changed.
+
+        <Frame caption="Two anonymous answers and the vote bar. Sample answers shown.">
+          <img src="/images/arena-battle.jpg" alt="Arena battle screen with Model A and Model B answers and four vote buttons" />
+        </Frame>
       </Step>
-      <Step title="See who you picked">
+      <Step title="See who you picked" icon="eye">
         After your vote the model names are revealed and your vote counts toward the [leaderboard](/concepts/leaderboard). Keep going in the same thread, or [share it](/concepts/threads) with a link.
       </Step>
     </Steps>
+
+    <Check>
+      That's it: you've run a blind battle and your vote is on the leaderboard.
+    </Check>
   </Tab>
   <Tab title="From code" icon="terminal">
-    The Arena runs on a public REST API at `https://api.dualmindlab.tech`. Reading the leaderboard needs no account:
+    The Arena runs on a public REST API at `{{apiBase}}`. Reading the leaderboard needs no account:
 
     <CodeGroup>
-    ```bash cURL
-    curl https://api.dualmindlab.tech/api/arena/model-stats
+    ```bash cURL icon="terminal"
+    curl {{apiBase}}/api/arena/model-stats
     ```
 
     ```javascript JavaScript
-    const res = await fetch("https://api.dualmindlab.tech/api/arena/model-stats");
+    const res = await fetch("{{apiBase}}/api/arena/model-stats");
     const { items } = await res.json();
     console.table(items.slice(0, 5).map(m => ({ rank: m.eloRank, model: m.displayName, elo: m.eloScore })));
     ```
@@ -50,7 +62,7 @@ icon: "rocket"
     ```python Python
     import requests
 
-    items = requests.get("https://api.dualmindlab.tech/api/arena/model-stats").json()["items"]
+    items = requests.get("{{apiBase}}/api/arena/model-stats").json()["items"]
     for m in items[:5]:
         print(m["eloRank"], m["displayName"], m["eloScore"])
     ```
@@ -60,14 +72,14 @@ icon: "rocket"
 
     <CodeGroup>
     ```bash cURL
-    curl https://api.dualmindlab.tech/api/arena/dualchat \
+    curl {{apiBase}}/api/arena/dualchat \
       -H "Authorization: Bearer $DUALMIND_TOKEN" \
       -H "Content-Type: application/json" \
       -d '{"prompt": "Write a haiku about distributed systems", "selectionMode": "random"}'
     ```
 
     ```javascript JavaScript
-    const res = await fetch("https://api.dualmindlab.tech/api/arena/dualchat", {
+    const res = await fetch("{{apiBase}}/api/arena/dualchat", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.DUALMIND_TOKEN}`,
@@ -83,7 +95,7 @@ icon: "rocket"
     import os, requests
 
     battle = requests.post(
-        "https://api.dualmindlab.tech/api/arena/dualchat",
+        "{{apiBase}}/api/arena/dualchat",
         headers={"Authorization": f"Bearer {os.environ['DUALMIND_TOKEN']}"},
         json={"prompt": "Write a haiku about distributed systems", "selectionMode": "random"},
         timeout=120,
@@ -92,13 +104,13 @@ icon: "rocket"
     ```
     </CodeGroup>
 
-    Then vote with the `comparisonId`. The [Run a battle](/api-reference/guides/run-a-battle) tutorial walks through the whole flow.
+    Then vote with the <Tooltip headline="comparisonId" tip="The ID of this battle, returned by POST /api/arena/dualchat. You vote on it with POST /api/arena/model-vote." cta="Submit a vote" href="/api-reference/voting/submit-vote">`comparisonId`</Tooltip>. The [Run a battle](/api-reference/guides/run-a-battle) tutorial walks through the whole flow.
   </Tab>
 </Tabs>
 
 ## Next steps
 
-<CardGroup cols={2}>
+<Columns cols={2}>
   <Card title="Arena modes" icon="swords" href="/concepts/model-comparison">
     Battle, Side by Side, Direct Chat, and the Topper mode in the API.
   </Card>
@@ -111,4 +123,4 @@ icon: "rocket"
   <Card title="API reference" icon="code" href="/api-reference/introduction">
     Every public endpoint, with a live playground.
   </Card>
-</CardGroup>
+</Columns>

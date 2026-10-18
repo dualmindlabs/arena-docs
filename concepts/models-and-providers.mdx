@@ -3,6 +3,7 @@ title: "Models and providers"
 description: "Where Arena models come from, which ones random battles use, and what happens when a model is unavailable."
 keywords: ["models", "providers", "groq", "google ai studio", "gemini", "cloudflare workers ai", "fallback"]
 icon: "cpu"
+tag: "New"
 ---
 
 The Arena serves **50+ open and hosted models** from three inference providers. The live list is always available from [`GET /api/models`](/api-reference/models/list-models), and the [leaderboard](/concepts/leaderboard) shows how each one is doing.
@@ -33,7 +34,7 @@ The Arena serves **50+ open and hosted models** from three inference providers. 
 | **Direct Chat**, auto | ✅ | ✅ | — |
 | **Topper** pairing (API) | ✅ | ✅ | ✅ |
 
-Cloudflare Workers AI models are **manual-only**: choose them in Side by Side or Direct Chat. Random picks come from Groq and Google AI Studio.
+Cloudflare Workers AI models are <Tooltip headline="Manual-only" tip="Never chosen at random. Pick them yourself in Side by Side or Direct Chat, or by name in the API.">manual-only</Tooltip>: choose them in Side by Side or Direct Chat. Random picks come from Groq and Google AI Studio.
 
 ## Model identifiers
 
@@ -75,7 +76,7 @@ flowchart LR
     FB --> FBOK{Answered?}
     FBOK -->|Yes| Note[Show it, starting with a System Note]
     FBOK -->|No| Sorry[Show a temporarily unavailable message]
-    classDef dm fill:#00D9FF1F,stroke:#0B7FA0,stroke-width:1px
+    classDef dm fill:#00D9FF1F,stroke:#09738F,stroke-width:1px
     classDef dmv fill:#8B5CF61F,stroke:#7C3AED,stroke-width:1px
     classDef dmn fill:#8C919A14,stroke:#8C919A,stroke-width:1px
     class Call,OK dm

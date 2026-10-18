@@ -1,0 +1,106 @@
+---
+title: "Glossary"
+description: "The words DualMind uses, in one place: battles, comparisons, ELO, threads, providers and more."
+keywords: ["glossary", "terms", "definitions", "elo", "comparison", "battle"]
+icon: "book-a"
+---
+
+## In the Arena
+
+<ResponseField name="Arena" type="product">
+  The DualMind web app at [arena.dualmindlab.tech](https://arena.dualmindlab.tech) where you compare models and vote.
+</ResponseField>
+
+<ResponseField name="Battle" type="mode">
+  Two **anonymous** models answer the same prompt; you vote and then see their names. The default mode. See [Arena modes](/concepts/model-comparison).
+</ResponseField>
+
+<ResponseField name="Side by Side" type="mode">
+  You choose both models and compare them head to head. In the API: `model1` and `model2`.
+</ResponseField>
+
+<ResponseField name="Direct Chat" type="mode">
+  A conversation with one model. Nothing to vote on.
+</ResponseField>
+
+<ResponseField name="Topper" type="pairing">
+  An API-only pairing: the model with the best win rate against a random challenger (`selectionMode: "topper"`).
+</ResponseField>
+
+<ResponseField name="Thread" type="conversation">
+  A saved conversation. Every battle or chat turn is stored in a thread with its answers and your vote. See [Threads and sharing](/concepts/threads).
+</ResponseField>
+
+<ResponseField name="Visibility" type="private · unlisted · public">
+  Who can read a thread. `private` is the default; `unlisted` and `public` can be opened by anyone with the link.
+</ResponseField>
+
+## Voting and ranking
+
+<ResponseField name="Comparison" type="comparisonId">
+  The stored record of one battle. Its ID, the `comparisonId`, is what you vote on.
+</ResponseField>
+
+<ResponseField name="Vote choice" type="left · right · tie · both-bad">
+  Your verdict on a battle. `left` and `right` pick a winner; `tie` and `both-bad` record none. See [Voting](/concepts/voting).
+</ResponseField>
+
+<ResponseField name="Reveal" type="event">
+  Showing the model names after a vote. Voting marks the comparison as revealed.
+</ResponseField>
+
+<ResponseField name="ELO" type="rating">
+  A rating that moves after each vote, weighted by how strong the opponent was. New models start at 1000. See [Leaderboard](/concepts/leaderboard).
+</ResponseField>
+
+<ResponseField name="Rank" type="eloRank">
+  A model's position by ELO, 1 being best. Equal scores share a rank.
+</ResponseField>
+
+<ResponseField name="Win rate" type="winRate">
+  Wins as a percentage of all battles the model appeared in.
+</ResponseField>
+
+<ResponseField name="Battles" type="totalResponses">
+  How many comparisons a model has taken part in. More battles means a more settled ELO.
+</ResponseField>
+
+## Models
+
+<ResponseField name="Provider" type="groq · google · cloudflare">
+  The service that runs a model: Groq, Google AI Studio or Cloudflare Workers AI. See [Models and providers](/concepts/models-and-providers).
+</ResponseField>
+
+<ResponseField name="Model name" type="modelName">
+  The provider's identifier for a model, e.g. `llama-3.3-70b-versatile`. Accepted anywhere the API asks for a model.
+</ResponseField>
+
+<ResponseField name="Model ID" type="modelId">
+  DualMind's UUID for a model. Also accepted anywhere the API asks for a model.
+</ResponseField>
+
+<ResponseField name="Auto-selectable" type="pool">
+  Models that random picks draw from: Groq and Google AI Studio. Cloudflare Workers AI models are used only when you choose them.
+</ResponseField>
+
+<ResponseField name="Fallback model" type="System Note">
+  A basic model that answers when the chosen one fails or takes longer than 60 seconds. Its reply starts with **[System Note]**.
+</ResponseField>
+
+## API
+
+<ResponseField name="Access token" type="Bearer JWT">
+  The short-lived token from your Arena session, sent as `Authorization: Bearer <token>`. See [Authentication](/api-reference/authentication).
+</ResponseField>
+
+<ResponseField name="Correlation ID" type="X-Correlation-Id">
+  A response header that identifies your request in our logs. Include it when you report a problem.
+</ResponseField>
+
+<ResponseField name="Health check" type="GET /health">
+  A public endpoint that reports whether the API is up. See [Status](/status).
+</ResponseField>
+
+<ResponseField name="Server-Sent Events" type="text/event-stream">
+  The streaming format used by `POST /api/arena/chat/stream`. See [Streaming](/api-reference/guides/streaming).
+</ResponseField>

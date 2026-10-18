@@ -7,7 +7,7 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap");
 
 :root {
-  --dm-cyan: #0b7fa0;
+  --dm-cyan: #09738f;
   --dm-violet: #7c3aed;
   --dm-ink: #0f1115;
   --dm-muted: #5b616b;
@@ -187,3 +187,252 @@ kbd {
   letter-spacing: -0.01em;
   color: var(--dm-ink);
 }
+
+/* ---------- Interactive widgets (snippets/*.jsx) ---------- */
+.dm-widget {
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  border: 1px solid var(--dm-line);
+  border-radius: 1rem;
+  background: var(--dm-surface);
+  color: var(--dm-ink);
+  font-size: 0.95rem;
+}
+
+.dm-widget-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.dm-widget-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.dm-label {
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dm-muted);
+}
+
+.dm-muted {
+  color: var(--dm-muted);
+}
+
+.dm-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--dm-line);
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+}
+
+.dm-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--dm-muted);
+}
+
+.dm-dot-up { background: #16a34a; box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.18); }
+.dm-dot-down { background: #dc2626; box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.18); }
+.dm-dot-warn { background: #d97706; box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.18); }
+
+.dm-ctl {
+  appearance: none;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--dm-line);
+  border-radius: 0.55rem;
+  background: transparent;
+  color: var(--dm-ink);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.dm-ctl:hover { border-color: var(--dm-cyan); }
+.dm-ctl:focus-visible { outline: 2px solid var(--dm-cyan); outline-offset: 2px; }
+.dm-ctl[aria-pressed="true"],
+.dm-ctl[aria-checked="true"] { border-color: var(--dm-cyan); background: var(--dm-glow-a); }
+.dm-ctl:disabled { opacity: 0.5; cursor: not-allowed; }
+
+select.dm-ctl {
+  padding-right: 1.8rem;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 0.9rem) 55%, calc(100% - 0.6rem) 55%;
+  background-size: 0.3rem 0.3rem;
+  background-repeat: no-repeat;
+}
+
+select.dm-ctl option { color: #0f1115; }
+
+.dm-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.dm-stat {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--dm-line);
+  border-radius: 0.75rem;
+}
+
+.dm-stat-value {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.dm-up { color: #15803d; }
+.dm-down { color: #b91c1c; }
+.dark .dm-up { color: #4ade80; }
+.dark .dm-down { color: #f87171; }
+
+.dm-table-wrap { overflow-x: auto; }
+
+.dm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dm-table caption { text-align: left; padding-bottom: 0.5rem; }
+
+.dm-table th {
+  text-align: left;
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dm-muted);
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--dm-line);
+  white-space: nowrap;
+}
+
+.dm-table td {
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid var(--dm-line);
+  vertical-align: middle;
+}
+
+.dm-table tr:last-child td { border-bottom: 0; }
+
+.dm-bar {
+  position: relative;
+  height: 0.4rem;
+  min-width: 4rem;
+  border-radius: 999px;
+  background: var(--dm-line);
+  overflow: hidden;
+}
+
+.dm-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--dm-cyan), var(--dm-violet));
+}
+
+.dm-skeleton {
+  height: 0.9rem;
+  border-radius: 0.4rem;
+  background: linear-gradient(90deg, var(--dm-line), transparent, var(--dm-line));
+  background-size: 200% 100%;
+  animation: dm-shimmer 1.4s linear infinite;
+}
+
+@keyframes dm-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* Battle demo */
+.dm-battle-prompt {
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px dashed var(--dm-line);
+  margin-bottom: 1rem;
+}
+
+.dm-answer {
+  position: relative;
+  padding: 1rem;
+  border: 1px solid var(--dm-line);
+  border-radius: 0.85rem;
+  white-space: pre-line;
+  line-height: 1.55;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dm-answer[data-winner="true"] {
+  border-color: var(--dm-cyan);
+  box-shadow: 0 0 0 4px var(--dm-glow-a);
+}
+
+.dm-answer-tag {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+}
+
+.dm-vote-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.dm-reveal {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.75rem;
+  background: var(--dm-glow-b);
+}
+
+.dm-code {
+  margin: 0.75rem 0 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--dm-line);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+@media (max-width: 640px) {
+  .dm-grid-2 { grid-template-columns: 1fr; }
+  .dm-widget { padding: 1rem; }
+  .dm-hide-sm { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dm-skeleton { animation: none; }
+  .dm-answer { transition: none; }
+}
+
+/* ---------- Contrast fixes for theme chrome ---------- */
+/* Mintlify's default footer grey is below 4.5:1 on white */
+#footer a { color: #5b616b; }
+#footer a:hover { color: var(--dm-ink); }
+#footer a span { color: inherit; }
+.dark #footer a { color: #a3a8b0; }
+.dark #footer a:hover { color: var(--dm-ink); }
+/* API field pills: the "default:" label is very light by default */
+[data-component-part="field-info-pill"] > span { color: inherit; opacity: 0.8; }

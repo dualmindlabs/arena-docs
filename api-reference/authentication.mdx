@@ -3,13 +3,45 @@ title: "Authentication"
 description: "Authenticate API requests with the access token from your DualMind Arena session."
 keywords: ["authentication", "token", "bearer", "jwt", "supabase"]
 icon: "key-round"
+tag: "New"
 ---
+
+import TokenWarning from "/snippets/token-warning.mdx"
 
 The API uses the same sign-in as the Arena. When you sign in, Supabase Auth issues a short-lived **access token** (a JWT). Send it as a Bearer token:
 
 ```http
 Authorization: Bearer <access token>
 ```
+
+<RequestExample>
+```bash Authenticated request
+curl {{apiBase}}/api/models \
+  -H "Authorization: Bearer $DUALMIND_TOKEN"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "items": [
+    {
+      "modelId": "c6e0cc03-3b12-41bf-b119-d0d02bec039b",
+      "modelName": "llama-3.3-70b-versatile",
+      "displayName": "Llama 3.3 70B Versatile",
+      "providerName": "groq",
+      "isFree": true,
+      "status": "active"
+    }
+  ]
+}
+```
+
+```http 401 Unauthorized
+HTTP/2 401
+www-authenticate: Bearer error="invalid_token", error_description="The token expired"
+```
+</ResponseExample>
 
 ## Which endpoints need a token
 
@@ -32,33 +64,31 @@ Authorization: Bearer <access token>
   <Step title="Copy the token">
     Run this in the console. It copies the current access token to your clipboard:
 
-    ```javascript
+    ```javascript Browser console icon="square-terminal"
     copy(await DualMindAuth.getAccessToken())
     ```
   </Step>
   <Step title="Keep it out of your code">
     Store it in an environment variable, not in source control:
 
-    ```bash
+    ```bash .env / shell icon="key-round"
     export DUALMIND_TOKEN="eyJhbGciOi..."
     ```
   </Step>
 </Steps>
 
-<Warning>
-  Your access token acts as **you**: anyone holding it can start battles, vote and read your private threads until it expires. Never paste it into shared code, issues or chats.
-</Warning>
+<TokenWarning />
 
 ## Check that it works
 
 <CodeGroup>
 ```bash cURL
-curl -i https://api.dualmindlab.tech/api/models \
+curl -i {{apiBase}}/api/models \
   -H "Authorization: Bearer $DUALMIND_TOKEN"
 ```
 
 ```javascript JavaScript
-const res = await fetch("https://api.dualmindlab.tech/api/models", {
+const res = await fetch("{{apiBase}}/api/models", {
   headers: { Authorization: `Bearer ${process.env.DUALMIND_TOKEN}` },
 });
 console.log(res.status, res.ok ? (await res.json()).items.length + " models" : res.headers.get("www-authenticate"));
@@ -68,7 +98,7 @@ console.log(res.status, res.ok ? (await res.json()).items.length + " models" : r
 import os, requests
 
 r = requests.get(
-    "https://api.dualmindlab.tech/api/models",
+    "{{apiBase}}/api/models",
     headers={"Authorization": f"Bearer {os.environ['DUALMIND_TOKEN']}"},
     timeout=30,
 )

@@ -6,7 +6,22 @@ keywords: ["tutorial", "battle", "vote", "dualchat", "blind"]
 icon: "swords"
 ---
 
+import TokenWarning from "/snippets/token-warning.mdx"
+import FallbackNote from "/snippets/fallback-note.mdx"
+
 This tutorial builds the core Arena loop against the API. You'll need an access token in `DUALMIND_TOKEN` ([how to get one](/api-reference/authentication)).
+
+<TokenWarning />
+
+<Tree>
+  <Tree.Folder name="dualmind-battle" defaultOpen>
+    <Tree.File name=".env" />
+    <Tree.File name="battle.mjs" />
+    <Tree.File name="battle.py" />
+  </Tree.Folder>
+</Tree>
+
+Put `DUALMIND_TOKEN=...` in `.env` (and `.env` in `.gitignore`), then follow along in JavaScript (Node 18+) or Python 3.9+.
 
 ```mermaid
 sequenceDiagram
@@ -29,14 +44,14 @@ sequenceDiagram
 
     <CodeGroup>
     ```bash cURL
-    THREAD_ID=$(curl -s https://api.dualmindlab.tech/api/threads \
+    THREAD_ID=$(curl -s {{apiBase}}/api/threads \
       -H "Authorization: Bearer $DUALMIND_TOKEN" -H "Content-Type: application/json" \
       -d '{"title": "Haiku battles", "mode": "battle"}' | jq -r .threadId)
     ```
 
-    ```javascript JavaScript
+    ```javascript battle.mjs {1-9}
     const api = (path, body) =>
-      fetch(`https://api.dualmindlab.tech${path}`, {
+      fetch(`{{apiBase}}${path}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${process.env.DUALMIND_TOKEN}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -48,12 +63,12 @@ sequenceDiagram
     const { threadId } = await api("/api/threads", { title: "Haiku battles", mode: "battle" });
     ```
 
-    ```python Python
+    ```python battle.py {3-5}
     import os, requests
 
     S = requests.Session()
     S.headers["Authorization"] = f"Bearer {os.environ['DUALMIND_TOKEN']}"
-    BASE = "https://api.dualmindlab.tech"
+    BASE = "{{apiBase}}"
 
     thread_id = S.post(f"{BASE}/api/threads", json={"title": "Haiku battles", "mode": "battle"}).json()["threadId"]
     ```
@@ -65,13 +80,13 @@ sequenceDiagram
 
     <CodeGroup>
     ```bash cURL
-    curl -s https://api.dualmindlab.tech/api/arena/dualchat --max-time 150 \
+    curl -s {{apiBase}}/api/arena/dualchat --max-time 150 \
       -H "Authorization: Bearer $DUALMIND_TOKEN" -H "Content-Type: application/json" \
       -d "{\"prompt\": \"Write a haiku about distributed systems\", \"threadId\": \"$THREAD_ID\"}" > battle.json
     jq -r '.comparisonId, .agent1.message, "---", .agent2.message' battle.json
     ```
 
-    ```javascript JavaScript
+    ```javascript battle.mjs
     const battle = await api("/api/arena/dualchat", {
       prompt: "Write a haiku about distributed systems",
       threadId,
@@ -80,7 +95,7 @@ sequenceDiagram
     console.log("B:", battle.agent2.message);
     ```
 
-    ```python Python
+    ```python battle.py
     battle = S.post(
         f"{BASE}/api/arena/dualchat",
         json={"prompt": "Write a haiku about distributed systems", "threadId": thread_id},
@@ -100,9 +115,7 @@ sequenceDiagram
     const reveal = { a: battle.agent1.model.displayName, b: battle.agent2.model.displayName };
     ```
 
-    <Note>
-      If either message starts with `[System Note]`, that side was answered by a fallback model. You may want to skip the vote.
-    </Note>
+    <FallbackNote />
   </Step>
 
   <Step title="Vote">
@@ -110,12 +123,12 @@ sequenceDiagram
 
     <CodeGroup>
     ```bash cURL
-    curl -s https://api.dualmindlab.tech/api/arena/model-vote \
+    curl -s {{apiBase}}/api/arena/model-vote \
       -H "Authorization: Bearer $DUALMIND_TOKEN" -H "Content-Type: application/json" \
       -d "{\"comparisonId\": \"$(jq -r .comparisonId battle.json)\", \"voteChoice\": \"left\", \"voteDurationMs\": 9000}"
     ```
 
-    ```javascript JavaScript
+    ```javascript battle.mjs {4-6}
     const started = Date.now();
     // ...user reads both answers and picks one...
     await api("/api/arena/model-vote", {
@@ -125,7 +138,7 @@ sequenceDiagram
     });
     ```
 
-    ```python Python
+    ```python battle.py {3}
     S.post(
         f"{BASE}/api/arena/model-vote",
         json={"comparisonId": battle["comparisonId"], "voteChoice": "left", "voteDurationMs": 9000},
@@ -142,17 +155,21 @@ sequenceDiagram
     jq -r '"A was \(.agent1.model.displayName) (\(.agent1.model.provider))", "B was \(.agent2.model.displayName) (\(.agent2.model.provider))"' battle.json
     ```
 
-    ```javascript JavaScript
+    ```javascript battle.mjs
     console.log(`A was ${reveal.a}, B was ${reveal.b}`);
     ```
 
-    ```python Python
+    ```python battle.py
     a, b = battle["agent1"]["model"], battle["agent2"]["model"]
     print(f"A was {a['displayName']} ({a['provider']}), B was {b['displayName']} ({b['provider']})")
     ```
     </CodeGroup>
   </Step>
 </Steps>
+
+<Check>
+  You've built the full Arena loop: battle, blind vote, reveal. Your vote counts on the [leaderboard](/concepts/leaderboard) like any other.
+</Check>
 
 ## Variations
 
