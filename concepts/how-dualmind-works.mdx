@@ -6,6 +6,15 @@ keywords: ["architecture", "how it works", "cloudflare", "supabase", "request fl
 icon: "workflow"
 ---
 
+<Panel>
+  <Card title="Stack at a glance" icon="layers">
+    - **Arena app**: Cloudflare
+    - **API**: ASP.NET Core in Cloudflare containers
+    - **Sign-in**: Supabase Auth
+    - **Models**: Groq, Google AI Studio, Workers AI
+  </Card>
+</Panel>
+
 DualMind Arena is a web app backed by one REST API. The API picks models, calls the providers in parallel, stores the battle, and records votes that feed the leaderboard.
 
 ## The big picture
@@ -19,7 +28,7 @@ flowchart LR
     API --> GA["Google AI Studio"]
     API --> CF["Cloudflare Workers AI"]
     API <--> DB[("Arena data<br/>threads · battles · votes")]
-    classDef dm fill:#00D9FF1F,stroke:#0B7FA0,stroke-width:1px
+    classDef dm fill:#00D9FF1F,stroke:#09738F,stroke-width:1px
     classDef dmv fill:#8B5CF61F,stroke:#7C3AED,stroke-width:1px
     classDef dmn fill:#8C919A14,stroke:#8C919A,stroke-width:1px
     class UI,API dm

@@ -22,6 +22,19 @@ The mode menu at the top of the Arena switches between three modes. Battles and 
   </Card>
 </CardGroup>
 
+<Frame caption="Switch modes from the menu at the top of the Arena." hint="Battle is the default.">
+  <img src="/images/arena-modes.jpg" alt="Arena mode menu listing Battle, Side by Side and Direct Chat" style={{ maxWidth: "320px" }} />
+</Frame>
+
+<Panel>
+  <Card title="API cheat sheet" icon="code">
+    - **Battle**: `dualchat` with a `prompt`
+    - **Topper**: `dualchat` with `selectionMode: "topper"`
+    - **Side by Side**: `dualchat` with `model1` and `model2`
+    - **Direct Chat**: `chat` with `model` or `auto`
+  </Card>
+</Panel>
+
 ## How models are paired
 
 ```mermaid
@@ -35,7 +48,7 @@ flowchart LR
     S --> V
     T --> V
     D --> X[No vote]
-    classDef dm fill:#00D9FF1F,stroke:#0B7FA0,stroke-width:1px
+    classDef dm fill:#00D9FF1F,stroke:#09738F,stroke-width:1px
     classDef dmv fill:#8B5CF61F,stroke:#7C3AED,stroke-width:1px
     classDef dmn fill:#8C919A14,stroke:#8C919A,stroke-width:1px
     class P,M dmn

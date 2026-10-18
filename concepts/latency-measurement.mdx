@@ -14,7 +14,13 @@ Speed matters when you pick a model for a product, but it shouldn't decide which
   Wall-clock time of the request in milliseconds, measured by the API. In a battle both models run in parallel, so this is the time until **both** answers were ready.
 </ResponseField>
 <ResponseField name="usage" type="object">
-  Token counts reported by the provider: `promptTokens`, `completionTokens` and `totalTokens`.
+  Token counts reported by the provider.
+
+  <Expandable title="properties">
+    <ResponseField name="promptTokens" type="integer">Tokens in your prompt and system prompt.</ResponseField>
+    <ResponseField name="completionTokens" type="integer">Tokens the model generated.</ResponseField>
+    <ResponseField name="totalTokens" type="integer">The sum of both.</ResponseField>
+  </Expandable>
 </ResponseField>
 <ResponseField name="model1TimeMs / model2TimeMs" type="integer">
   The response time stored with each turn of a [thread](/concepts/threads).
@@ -48,7 +54,7 @@ A fast answer feels fluent before you've read a word, and a slow one gives you m
 ## Measure it yourself
 
 <CodeGroup>
-```javascript JavaScript
+```javascript measure.mjs {9-14}
 const t0 = performance.now();
 const res = await fetch("{{apiBase}}/api/arena/chat/stream", {
   method: "POST",
@@ -66,7 +72,7 @@ for (;;) {
 console.log({ timeToFirstChunkMs: Math.round(first), totalMs: Math.round(performance.now() - t0) });
 ```
 
-```python Python
+```python measure.py {13-15}
 import time, requests
 
 t0 = time.perf_counter()

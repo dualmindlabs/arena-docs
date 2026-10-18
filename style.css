@@ -7,7 +7,7 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap");
 
 :root {
-  --dm-cyan: #0b7fa0;
+  --dm-cyan: #09738f;
   --dm-violet: #7c3aed;
   --dm-ink: #0f1115;
   --dm-muted: #5b616b;
@@ -426,3 +426,13 @@ select.dm-ctl option { color: #0f1115; }
   .dm-skeleton { animation: none; }
   .dm-answer { transition: none; }
 }
+
+/* ---------- Contrast fixes for theme chrome ---------- */
+/* Mintlify's default footer grey is below 4.5:1 on white */
+#footer a { color: #5b616b; }
+#footer a:hover { color: var(--dm-ink); }
+#footer a span { color: inherit; }
+.dark #footer a { color: #a3a8b0; }
+.dark #footer a:hover { color: var(--dm-ink); }
+/* API field pills: the "default:" label is very light by default */
+[data-component-part="field-info-pill"] > span { color: inherit; opacity: 0.8; }

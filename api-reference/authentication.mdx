@@ -14,6 +14,35 @@ The API uses the same sign-in as the Arena. When you sign in, Supabase Auth issu
 Authorization: Bearer <access token>
 ```
 
+<RequestExample>
+```bash Authenticated request
+curl {{apiBase}}/api/models \
+  -H "Authorization: Bearer $DUALMIND_TOKEN"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "items": [
+    {
+      "modelId": "c6e0cc03-3b12-41bf-b119-d0d02bec039b",
+      "modelName": "llama-3.3-70b-versatile",
+      "displayName": "Llama 3.3 70B Versatile",
+      "providerName": "groq",
+      "isFree": true,
+      "status": "active"
+    }
+  ]
+}
+```
+
+```http 401 Unauthorized
+HTTP/2 401
+www-authenticate: Bearer error="invalid_token", error_description="The token expired"
+```
+</ResponseExample>
+
 ## Which endpoints need a token
 
 | Needs a token | No token needed |
@@ -35,14 +64,14 @@ Authorization: Bearer <access token>
   <Step title="Copy the token">
     Run this in the console. It copies the current access token to your clipboard:
 
-    ```javascript
+    ```javascript Browser console icon="square-terminal"
     copy(await DualMindAuth.getAccessToken())
     ```
   </Step>
   <Step title="Keep it out of your code">
     Store it in an environment variable, not in source control:
 
-    ```bash
+    ```bash .env / shell icon="key-round"
     export DUALMIND_TOKEN="eyJhbGciOi..."
     ```
   </Step>
