@@ -1,0 +1,88 @@
+# Manual redeploy of the Mintlify site.
+#
+# Normal deploys need nothing from this file: the Mintlify GitHub App deploys
+# every push to main. Run this only to rebuild the site without a new commit
+# (a stuck deploy, a dashboard change, a refreshed remote OpenAPI spec).
+#
+# Uses the Mintlify REST API (https://www.mintlify.com/docs/api/update/trigger),
+# which needs a Pro or Enterprise plan and these repository secrets:
+#   MINTLIFY_API_KEY     admin API key (starts with mint_, not mint_dsc_)
+#   MINTLIFY_PROJECT_ID  project ID from the same API keys page
+# Without them the job only prints a notice and succeeds.
+name: Mintlify redeploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mintlify-redeploy
+  cancel-in-progress: false
+
+jobs:
+  redeploy:
+    name: Trigger Mintlify deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MINTLIFY_API_KEY: ${{ secrets.MINTLIFY_API_KEY }}
+      MINTLIFY_PROJECT_ID: ${{ secrets.MINTLIFY_PROJECT_ID }}
+      MINTLIFY_API: https://api.mintlify.com/v1
+    steps:
+      - name: Trigger the update and wait for it
+        run: |
+          if [ -z "$MINTLIFY_API_KEY" ] || [ -z "$MINTLIFY_PROJECT_ID" ]; then
+            echo "::notice title=Mintlify redeploy skipped::MINTLIFY_API_KEY and MINTLIFY_PROJECT_ID are not both set in Settings > Secrets and variables > Actions. Nothing was triggered; the Mintlify GitHub App still deploys every push to main."
+            exit 0
+          fi
+
+          if [ "$GITHUB_REF_NAME" != "main" ]; then
+            echo "::notice::Run from '$GITHUB_REF_NAME', but Mintlify always deploys its configured deployment branch (main), not the branch this run was started from."
+          fi
+
+          response=$(curl --silent --show-error --fail-with-body --request POST \
+            --header "Authorization: Bearer $MINTLIFY_API_KEY" \
+            "$MINTLIFY_API/project/update/$MINTLIFY_PROJECT_ID") || {
+            echo "::error::Mintlify did not accept the update request: $response"
+            exit 1
+          }
+          status_id=$(jq -r '.statusId // empty' <<<"$response")
+          if [ -z "$status_id" ]; then
+            echo "::error::No statusId in the Mintlify response: $response"
+            exit 1
+          fi
+          echo "Queued Mintlify update $status_id"
+
+          # Poll for up to 15 minutes.
+          for _ in $(seq 1 90); do
+            sleep 10
+            status_json=$(curl --silent --show-error --fail-with-body \
+              --header "Authorization: Bearer $MINTLIFY_API_KEY" \
+              "$MINTLIFY_API/project/update-status/$status_id") || {
+              echo "::warning::Status check failed, retrying: $status_json"
+              continue
+            }
+            status=$(jq -r '.status // "unknown"' <<<"$status_json")
+            echo "Status: $status"
+            case "$status" in
+              success)
+                jq -r --arg id "$status_id" '
+                  "### Mintlify deployment succeeded\n",
+                  "- Status ID: `\($id)`",
+                  (select(.subdomain) | "- Subdomain: `\(.subdomain)`"),
+                  (select(.summary) | "- Summary: \(.summary)")
+                ' <<<"$status_json" >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+                ;;
+              failure)
+                echo "::error::Mintlify deployment failed: $(jq -r '.summary // ""' <<<"$status_json")"
+                jq -r '.logs // [] | .[]' <<<"$status_json"
+                exit 1
+                ;;
+            esac
+          done
+
+          echo "::error::Mintlify update $status_id did not finish within 15 minutes"
+          exit 1
